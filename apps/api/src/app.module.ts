@@ -18,6 +18,7 @@ import { BrokersModule } from "./brokers/brokers.module";
 import { CryptoModule } from "./common/crypto.module";
 import { SalesModule } from "./sales/sales.module";
 import { RentalsModule } from "./rentals/rentals.module";
+import { DevelopmentsModule } from "./developments/developments.module";
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { RentalsModule } from "./rentals/rentals.module";
     BrokersModule,
     SalesModule,
     RentalsModule,
+    DevelopmentsModule,
   ],
   providers: [
     // Ordem importa: rate limit → sessão → CSRF → papel.

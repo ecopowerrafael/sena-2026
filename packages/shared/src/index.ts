@@ -5,5 +5,6 @@ export * from "./api/health";
 export * from "./api/properties";
 export * from "./api/sales";
 export * from "./api/rentals";
+export * from "./api/developments";
 export * from "./enums/crm";
 export * from "./enums/roles";

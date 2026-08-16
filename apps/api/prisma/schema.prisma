@@ -94,6 +94,15 @@ model Tenant {
   maintenanceQuotes   MaintenanceQuote[]
   maintenanceEvents   MaintenanceEvent[]
 
+  developments        Development[]
+  developmentBlocks   DevelopmentBlock[]
+  lots                Lot[]
+  lotReservations     LotReservation[]
+  lotSimulations      LotSimulation[]
+  lotProposals        LotProposal[]
+  lotProposalHistory  LotProposalHistory[]
+  lotSales            LotSale[]
+
   @@index([status])
   @@map("tenants")
 }
@@ -137,6 +146,11 @@ model User {
   commissionSplits     CommissionSplit[]
 
   responsibleLeases   Lease[]
+
+  lotReservations     LotReservation[]
+  lotSimulations      LotSimulation[]
+  lotProposals        LotProposal[]
+  lotSales            LotSale[]
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -327,6 +341,11 @@ model Client {
   leaseTenantsRel  LeaseTenant[] @relation("LeaseTenant")
   leaseOwnersRel   LeaseOwner[] @relation("LeaseOwner")
   ownerPayouts     OwnerPayout[]
+
+  lotReservations  LotReservation[]
+  lotSimulations   LotSimulation[]
+  lotProposals     LotProposal[]
+  lotSales         LotSale[]
 
   propertyOwnerships PropertyOwner[]
   interestProfile    InterestProfile?
@@ -1231,4 +1250,235 @@ model MaintenanceEvent {
   @@index([providerId])
   @@map("maintenance_events")
 }
+
+// ---------------------------------------------------------------------------
+// Etapa 6 — empreendimentos, quadras, lotes, reservas e vendas
+// ---------------------------------------------------------------------------
+
+enum LotStatus {
+  AVAILABLE
+  RESERVED
+  PROPOSAL
+  SOLD
+  BLOCKED
+  CANCELLATION
+}
+
+enum LotReservationStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  CONVERTED_TO_PROPOSAL
+}
+
+enum LotProposalStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  APPROVED
+  CANCELLED
+}
+
+/// Empreendimento imobiliário.
+model Development {
+  id                  String      @id @default(cuid())
+  tenantId            String
+  name                String
+  developerCompany    String?     @db.VarChar(255)
+  location            String      @db.Text
+  launchDate          DateTime
+  deliveryForecast    DateTime?
+  commissionPercentage Decimal    @db.Decimal(6, 2)
+  campaignId          String?
+  status              String      @db.VarChar(64)
+  heroAssetId         String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  tenant  Tenant                 @relation(fields: [tenantId], references: [id])
+  blocks  DevelopmentBlock[]
+  lots    Lot[]
+  proposals    LotProposal[]
+  sales        LotSale[]
+
+  @@index([tenantId, status])
+  @@map("developments")
+}
+
+/// Quadra dentro de um empreendimento.
+model DevelopmentBlock {
+  id            String   @id @default(cuid())
+  tenantId      String
+  developmentId String
+  code          String   @db.VarChar(64)
+  name          String
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  development Development @relation(fields: [developmentId], references: [id], onDelete: Cascade)
+  lots        Lot[]
+
+  @@unique([developmentId, code])
+  @@index([developmentId, sortOrder])
+  @@map("development_blocks")
+}
+
+/// Lote dentro de um empreendimento.
+model Lot {
+  id                  String    @id @default(cuid())
+  tenantId            String
+  developmentId       String
+  blockId             String
+  lotNumber           String    @db.VarChar(64)
+  areaM2              Decimal   @db.Decimal(10, 2)
+  basePrice           Decimal   @db.Decimal(15, 2)
+  promotionalPrice    Decimal?  @db.Decimal(15, 2)
+  minDownPayment      Decimal   @db.Decimal(15, 2)
+  maxInstallments     Int       @default(120)
+  status              LotStatus @default(AVAILABLE)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  tenant        Tenant           @relation(fields: [tenantId], references: [id])
+  development   Development      @relation(fields: [developmentId], references: [id], onDelete: Cascade)
+  block         DevelopmentBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  reservation   LotReservation?
+  simulations   LotSimulation[]
+  proposals     LotProposal[]
+  sale          LotSale?
+
+  @@unique([developmentId, blockId, lotNumber])
+  @@index([developmentId, status])
+  @@index([tenantId])
+  @@map("lots")
+}
+
+/// Reserva de lote com expiração.
+model LotReservation {
+  id        String                 @id @default(cuid())
+  tenantId  String
+  lotId     String                 @unique
+  clientId  String
+  brokerId  String
+  reservedAt DateTime               @default(now())
+  expiresAt DateTime
+  status    LotReservationStatus   @default(ACTIVE)
+  createdAt DateTime               @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  lot         Lot         @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  client      Client      @relation(fields: [clientId], references: [id])
+  broker      User        @relation(fields: [brokerId], references: [id])
+
+  @@index([lotId, status])
+  @@index([tenantId, expiresAt])
+  @@map("lot_reservations")
+}
+
+/// Simulador de parcelas/financiamento.
+model LotSimulation {
+  id              String   @id @default(cuid())
+  tenantId        String
+  lotId           String
+  clientId        String?
+  brokerId        String
+  entryAmount     Decimal  @db.Decimal(15, 2)
+  installments    Int
+  discountAmount  Decimal  @db.Decimal(15, 2)
+  financedBalance Decimal  @db.Decimal(15, 2)
+  interestRate    Decimal? @db.Decimal(6, 2)
+  installmentValue Decimal  @db.Decimal(15, 2)
+  createdAt       DateTime @default(now())
+
+  tenant      Tenant  @relation(fields: [tenantId], references: [id])
+  lot         Lot     @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  client      Client? @relation(fields: [clientId], references: [id])
+  broker      User    @relation(fields: [brokerId], references: [id])
+
+  @@index([lotId])
+  @@index([tenantId, createdAt])
+  @@map("lot_simulations")
+}
+
+/// Proposta de compra de lote.
+model LotProposal {
+  id                String          @id @default(cuid())
+  tenantId          String
+  developmentId     String
+  lotId             String
+  clientId          String
+  brokerId          String
+  proposedPrice     Decimal         @db.Decimal(15, 2)
+  entryAmount       Decimal         @db.Decimal(15, 2)
+  installments      Int
+  interestRate      Decimal?        @db.Decimal(6, 2)
+  status            LotProposalStatus @default(DRAFT)
+  proposedAt        DateTime        @default(now())
+  expiresAt         DateTime?
+  approvedAt        DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id])
+  development Development    @relation(fields: [developmentId], references: [id], onDelete: Cascade)
+  lot         Lot            @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  client      Client         @relation(fields: [clientId], references: [id])
+  broker      User           @relation(fields: [brokerId], references: [id])
+  history     LotProposalHistory[]
+  sale        LotSale?
+
+  @@index([lotId, status])
+  @@index([tenantId, status])
+  @@map("lot_proposals")
+}
+
+/// Histórico de mudanças em proposta de lote.
+model LotProposalHistory {
+  id         String             @id @default(cuid())
+  tenantId   String
+  proposalId String
+  fromStatus LotProposalStatus?
+  toStatus   LotProposalStatus
+  reason     String?            @db.Text
+  createdAt  DateTime           @default(now())
+
+  tenant   Tenant     @relation(fields: [tenantId], references: [id])
+  proposal LotProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+
+  @@index([proposalId, createdAt])
+  @@map("lot_proposal_history")
+}
+
+/// Venda de lote (após proposta aprovada).
+model LotSale {
+  id                String   @id @default(cuid())
+  tenantId          String
+  developmentId     String
+  lotId             String   @unique
+  proposalId        String   @unique
+  clientId          String
+  brokerId          String
+  finalPrice        Decimal  @db.Decimal(15, 2)
+  entryAmount       Decimal  @db.Decimal(15, 2)
+  installments      Int
+  interestRate      Decimal? @db.Decimal(6, 2)
+  contractNumber    String?  @db.VarChar(64)
+  saleDate          DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  development Development @relation(fields: [developmentId], references: [id], onDelete: Cascade)
+  lot         Lot         @relation(fields: [lotId], references: [id], onDelete: Cascade)
+  proposal    LotProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  client      Client      @relation(fields: [clientId], references: [id])
+  broker      User        @relation(fields: [brokerId], references: [id])
+
+  @@index([developmentId, saleDate])
+  @@index([tenantId])
+  @@map("lot_sales")
+}
+
 

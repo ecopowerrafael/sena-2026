@@ -21,6 +21,14 @@ const envSchema = z.object({
   LOGIN_RATE_LIMIT: z.coerce.number().int().positive().default(5),
   LOGIN_RATE_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
 
+  // Proteção de documentos (ARCHITECTURE.md §10.1): chaves em hexadecimal de 32 bytes.
+  DOCUMENT_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, "DOCUMENT_ENCRYPTION_KEY deve ter 64 caracteres hexadecimais."),
+  DOCUMENT_HASH_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, "DOCUMENT_HASH_KEY deve ter 64 caracteres hexadecimais."),
+
   // Seed de administrador — apenas dev/uso controlado.
   SEED_ADMIN_EMAIL: z.string().email().optional(),
   SEED_ADMIN_PASSWORD: z.string().min(10).optional(),

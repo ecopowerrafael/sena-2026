@@ -12,6 +12,10 @@ import type { Env } from "./config/env";
 import { PrismaModule } from "./database/prisma.module";
 import { HealthModule } from "./health/health.module";
 import { UsersModule } from "./users/users.module";
+import { ClientsModule } from "./clients/clients.module";
+import { LeadsModule } from "./leads/leads.module";
+import { BrokersModule } from "./brokers/brokers.module";
+import { CryptoModule } from "./common/crypto.module";
 
 @Module({
   imports: [
@@ -30,10 +34,14 @@ import { UsersModule } from "./users/users.module";
       }),
     }),
     PrismaModule,
+    CryptoModule,
     AuditModule,
     AuthModule,
     UsersModule,
     HealthModule,
+    ClientsModule,
+    LeadsModule,
+    BrokersModule,
   ],
   providers: [
     // Ordem importa: rate limit → sessão → CSRF → papel.

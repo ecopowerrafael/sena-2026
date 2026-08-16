@@ -4,6 +4,8 @@ describe("loadEnv", () => {
   const base = {
     DATABASE_URL: "mysql://root:root@localhost:3306/sena_crm",
     JWT_SECRET: "segredo-de-teste-com-mais-de-32-caracteres",
+    DOCUMENT_ENCRYPTION_KEY: "0".repeat(64),
+    DOCUMENT_HASH_KEY: "1".repeat(64),
   };
 
   it("aplica defaults de desenvolvimento", () => {

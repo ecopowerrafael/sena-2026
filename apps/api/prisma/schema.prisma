@@ -56,6 +56,14 @@ model Tenant {
   resetTokens    PasswordResetToken[]
   auditLogs      AuditLog[]
 
+  clients         Client[]
+  clientRoles     ClientRoleAssignment[]
+  leadOrigins     LeadOrigin[]
+  campaigns       Campaign[]
+  leads           Lead[]
+  leadStatusLogs  LeadStatusHistory[]
+  activities      Activity[]
+
   @@index([status])
   @@map("tenants")
 }
@@ -81,6 +89,11 @@ model User {
   sessions      RefreshSession[]
   resetTokens   PasswordResetToken[]
   auditLogs     AuditLog[]
+
+  clientsResponsible Client[]            @relation("ClientResponsible")
+  leadsAssigned      Lead[]              @relation("LeadBroker")
+  leadStatusChanges  LeadStatusHistory[] @relation("LeadStatusAuthor")
+  activitiesCreated  Activity[]          @relation("ActivityAuthor")
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -186,4 +199,209 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@index([action, createdAt])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Etapa 2 — cliente unificado, origens, campanhas, leads e atividades
+// ---------------------------------------------------------------------------
+
+enum ClientType {
+  PERSON
+  COMPANY
+}
+
+enum DocumentType {
+  CPF
+  CNPJ
+}
+
+enum ClientRole {
+  BUYER
+  OWNER
+  LESSOR
+  TENANT
+  INVESTOR
+}
+
+enum LeadStatus {
+  NEW
+  CONTACT
+  QUALIFIED
+  PROPERTY_PRESENTED
+  VISIT
+  PROPOSAL
+  NEGOTIATION
+  CLOSED
+  LOST
+}
+
+enum ActivityType {
+  CALL
+  WHATSAPP
+  EMAIL
+  MEETING
+  VISIT
+  NOTE
+}
+
+/// Pessoa ou empresa. Um mesmo Client acumula papéis (ARCHITECTURE.md §10):
+/// não existem cadastros separados de comprador, proprietário, locador ou locatário.
+model Client {
+  id                  String       @id @default(cuid())
+  tenantId            String
+  type                ClientType   @default(PERSON)
+  name                String
+  documentType        DocumentType?
+  /// Documento normalizado sob AES-256-GCM; o valor em claro nunca é persistido.
+  documentEncrypted   String?      @db.VarChar(512)
+  /// HMAC determinístico: permite busca e checagem de duplicidade sem decifrar.
+  documentHash        String?      @db.VarChar(64)
+  documentLast4       String?      @db.VarChar(4)
+  phone               String?      @db.VarChar(32)
+  whatsapp            String?      @db.VarChar(32)
+  email               String?      @db.VarChar(180)
+  responsibleBrokerId String?
+  lastContactAt       DateTime?
+  nextContactAt       DateTime?
+  notes               String?      @db.Text
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  deletedAt           DateTime?
+
+  tenant            Tenant                @relation(fields: [tenantId], references: [id])
+  responsibleBroker User?                 @relation("ClientResponsible", fields: [responsibleBrokerId], references: [id])
+  roles             ClientRoleAssignment[]
+  leads             Lead[]
+  activities        Activity[]
+
+  @@unique([tenantId, documentHash])
+  @@index([tenantId, name])
+  @@index([tenantId, responsibleBrokerId])
+  @@map("clients")
+}
+
+model ClientRoleAssignment {
+  id        String     @id @default(cuid())
+  tenantId  String
+  clientId  String
+  role      ClientRole
+  createdAt DateTime   @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, role])
+  @@index([tenantId, role])
+  @@map("client_role_assignments")
+}
+
+/// Origem de captação, configurável por tenant (ARCHITECTURE.md §11).
+model LeadOrigin {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  slug      String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  campaigns Campaign[]
+  leads     Lead[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, isActive])
+  @@map("lead_origins")
+}
+
+model Campaign {
+  id        String    @id @default(cuid())
+  tenantId  String
+  name      String
+  originId  String?
+  startsAt  DateTime?
+  endsAt    DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id])
+  origin LeadOrigin? @relation(fields: [originId], references: [id])
+  leads  Lead[]
+
+  @@unique([tenantId, name])
+  @@map("campaigns")
+}
+
+model Lead {
+  id               String     @id @default(cuid())
+  tenantId         String
+  clientId         String
+  assignedBrokerId String
+  originId         String
+  campaignId       String?
+  status           LeadStatus @default(NEW)
+  lostReason       String?    @db.VarChar(255)
+  estimatedBudget  Decimal?   @db.Decimal(15, 2)
+  lastContactAt    DateTime?
+  nextContactAt    DateTime?
+  notes            String?    @db.Text
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  deletedAt        DateTime?
+
+  tenant         Tenant              @relation(fields: [tenantId], references: [id])
+  client         Client              @relation(fields: [clientId], references: [id])
+  assignedBroker User                @relation("LeadBroker", fields: [assignedBrokerId], references: [id])
+  origin         LeadOrigin          @relation(fields: [originId], references: [id])
+  campaign       Campaign?           @relation(fields: [campaignId], references: [id])
+  statusHistory  LeadStatusHistory[]
+  activities     Activity[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, assignedBrokerId])
+  @@index([tenantId, createdAt])
+  @@map("leads")
+}
+
+model LeadStatusHistory {
+  id              String      @id @default(cuid())
+  tenantId        String
+  leadId          String
+  fromStatus      LeadStatus?
+  toStatus        LeadStatus
+  reason          String?     @db.VarChar(255)
+  changedByUserId String?
+  createdAt       DateTime    @default(now())
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  lead      Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  changedBy User?  @relation("LeadStatusAuthor", fields: [changedByUserId], references: [id])
+
+  @@index([leadId, createdAt])
+  @@map("lead_status_history")
+}
+
+/// Registro de contato/atividade ligado ao cliente e, quando houver, ao lead.
+model Activity {
+  id              String       @id @default(cuid())
+  tenantId        String
+  clientId        String?
+  leadId          String?
+  type            ActivityType
+  description     String       @db.Text
+  occurredAt      DateTime     @default(now())
+  createdByUserId String?
+  createdAt       DateTime     @default(now())
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  client    Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lead      Lead?   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("ActivityAuthor", fields: [createdByUserId], references: [id])
+
+  @@index([tenantId, occurredAt])
+  @@index([clientId, occurredAt])
+  @@index([leadId, occurredAt])
+  @@map("activities")
 }

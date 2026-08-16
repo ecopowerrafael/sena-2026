@@ -1,37 +1,39 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
 **Última atualização:** 16/08/2026  
-**Fase atual:** Etapa 5 concluída — locações completo  
-**Estado geral:** ETAPAS 0–5 CONCLUÍDAS
+**Fase atual:** Etapa 6 concluída — empreendimentos e lotes  
+**Estado geral:** ETAPAS 0–6 CONCLUÍDAS
 
 ---
 
-## Etapa 5 — Pronto
+## Etapa 6 — Pronto
 
-**Lease (ARCHITECTURE.md §17)**: contrato com monthlyRent, condoFee, iptu, dueDay, adminFeePercentage,
-adjustmentIndex/nextAdjustmentDate, status (ACTIVE/PAUSED/COMPLETED/TERMINATED).
+**Development (ARCHITECTURE.md §18)**: empreendimento com name, developerCompany, location, launchDate,
+deliveryForecast, commissionPercentage, campaignId, status, heroAssetId.
 
-**LeaseTenant + LeaseOwner**: múltiplos participantes com percentual, relações com Client (reutilizado).
+**DevelopmentBlock**: quadras com code (único por dev), name, sortOrder.
 
-**RentCharge (§17.3)**: competência, rentAmount/condoAmount/iptuAmount/otherAmount, desconto/multa/juros,
-totalAmount, status (PENDING/PARTIAL/PAID/OVERDUE/CANCELLED).
+**Lot**: lotes com lotNumber, areaM2, basePrice, promotionalPrice, minDownPayment, maxInstallments (120 padrão),
+status (AVAILABLE/RESERVED/PROPOSAL/SOLD/BLOCKED/CANCELLATION).
 
-**RentPayment**: recebimentos parciais com receiptUrl; status da cobrança atualizado automaticamente.
+**LotReservation (§18.1)**: proteção contra dupla reserva via transação atômica. Expira em expiresAt.
+Status: ACTIVE/EXPIRED/CANCELLED/CONVERTED_TO_PROPOSAL.
 
-**OwnerPayout (§17.4)**: cálculo atômico: aluguel recebido - taxa adm - despesas autorizadas = líquido.
-Fórmula registrada (não apenas saldo final). Uma linha por proprietário/competência.
+**LotSimulation (§18.2)**: entryAmount, installments, discountAmount, financedBalance, interestRate,
+installmentValue calculada com juros compostos.
 
-**RentalExpense**: despesas autorizadas/passáveis (água, luz, etc) por competência; isAuthorized flag.
+**LotProposal + LotProposalHistory (§18.3)**: draft → sent → accepted → approved. History tracks transitions.
 
-**Inspection (§17.5)**: ENTRY/PERIODIC/EXIT com items checklist e media (fotos).
-
-**MaintenanceRequest + ServiceProvider + Quote + Event (§17.6)**: solicitação → orçamento → aprovação → conclusão.
+**LotSale**: finalPrice, entryAmount, installments, contractNumber. Criada atomicamente na aprovação.
+Atualiza lote para SOLD.
 
 **Isolamento**: tenant-scoped em todas as entidades.
 
-**Schema**: 14 tabelas novas + relações em Tenant/User/Client/Property. Migration 20260816230000.
+**Schema**: 8 tabelas novas + relações em Tenant/User/Client. Migration 20260816240000.
 
-**Serviços**: LeasesService (CRUD), ChargesService (cálculo de repasse), InspectionsService, MaintenanceService.
+**Serviços**: DevelopmentsService (CRUD), LotsService (reserve + simulate), LotProposalsService (workflow).
+
+**Teste crítico**: reserva usa $transaction para prevenir dupla venda. Status é verificado dentro da transação.
 
 ---
 
@@ -43,4 +45,4 @@ format ✓ · lint 0 · typecheck 0 · build ✓ · migrate ✓
 
 ## Próximo
 
-PROMPT E6: empreendimentos, quadras e lotes. Parar lá.
+PROMPT E7: dashboards, relatórios e alertas. Parar lá.

@@ -1,59 +1,43 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
 **Última atualização:** 16/08/2026  
-**Fase atual:** Etapa 2 concluída — cliente unificado, leads e funil CRM  
-**Estado geral:** ETAPAS 0, 1 E 2 CONCLUÍDAS E VALIDADAS / ETAPA 3 (IMÓVEIS) PENDENTE
+**Fase atual:** Etapa 3 concluída — imóveis, proprietários e interesse  
+**Estado geral:** ETAPAS 0–3 CONCLUÍDAS / ETAPA 4 (VISITAS, VENDAS, COMISSÕES) PENDENTE
 
 ---
 
-## Handoff da rodada
+## Etapa 3 — Pronto
 
-**ETAPA 2 / RODADA 2 (CLAUDE)** — CONCLUÍDO E VALIDADO
+**Property (ARCHITECTURE.md §13)**: código único/tenant, tipo (9 tipos), propósito (SALE/RENT/BOTH),
+captador, preços (venda/aluguel), condomínio, IPTU, endereço brasileiro (logradouro/número/complemento/bairro/
+cidade/estado/CEP/geo), área (total/privada), quartos/suítes/banhos/garagens, status de documentação,
+exclusividade com vencimento, descrição.
 
-Schema: Client, ClientRoleAssignment, LeadOrigin, Campaign, Lead, LeadStatusHistory, Activity com
-multi-tenant. Enums: CLIENT_TYPES, CLIENT_ROLES, LEAD_STATUSES, ACTIVITY_TYPES; transições do
-funil SENA; origens padrão.
+**PropertyOwner (§13.1)**: múltiplos proprietários por imóvel, percentual, isPrimary.
 
-Modules: CryptoService (AES-256-GCM + HMAC para CPF/CNPJ), ClientsModule, LeadsModule, BrokersModule.
-DTOs completos. AppModule wirED. Config estendida com chaves de criptografia.
+**Assets + Mídia (§13.2)**: referência a binários (LOCAL/S3), não em MySQL. Asset (kind/provider/path/
+mimeType/size/checksum). PropertyMedia (tipo: PHOTO/VIDEO/DOCUMENT, sortOrder).
 
-Validado: format ✓ lint 0 erros · typecheck 3/3 · jest 34/34 · build ✓ · migrate ✓
+**PropertyFeature**: características (piscina, churrasqueira, etc).
 
-Pendências: CPF/CNPJ criptografia comentada (sem e-mail ainda); frontend mantém mocks de leads/brokers.
+**InterestProfile (§12)**: objetivo (BUY/RENT), preço (mín/máx), quartos/suítes/garagens (mín),
+método de pagamento (array JSON), financiamento, bairros preferidos, notas.
 
-Próxima: PROMPT E3 (imóveis, proprietários).
+**Matching**: score calculado (não persistido), razões de compatibilidade (preço/bairro/quartos/
+financiamento).
 
----
+**Isolamento**: tenant-scoped em property/media/features/owners.
 
-## Etapa 2 — Pronto
-
-**Cliente unificado (ARCHITECTURE.md §10)**: Pessoa/empresa, CPF/CNPJ criptografado + HMAC, papéis
-múltiplos (BUYER, OWNER, LESSOR, TENANT, INVESTOR), corretor responsável.
-
-**Leads + Funil SENA (§11)**: NEW → CONTACT → QUALIFIED → PROPERTY_PRESENTED → VISIT → PROPOSAL
-→ NEGOTIATION → CLOSED; LOST a qualquer momento com motivo; reabertura; histórico de transições;
-atividades de contato.
-
-**Corretores**: Perfil profissional (CRECI, times, gerente), restrição de atribuição por papel.
-
-**Isolamento**: Tenant-scoped; 404 para registro de outro tenant; HMAC duplicidade.
-
-**CryptoService**: AES-256-GCM + HMAC (ARCHITECTURE.md §10.1).
-
-**Testes**: Transições válidas, duplicidade CPF/CNPJ, isolamento, permissões.
+**Schema**: 7 tabelas novas + relações em Tenant/User/Client. Migration 20260816210000.
 
 ---
 
-## Como rodar
+## Estado compilação
 
-```bash
-npm run dev     # Web :3000, API :3333/api/v1
-```
-
-Painel → /leads (backend pronto, frontend ainda em mock).
+format ✓ · lint 0 · typecheck 3/3 ✓ · build ✓ · migrate ✓
 
 ---
 
 ## Próximo
 
-PROMPT E3: imóveis, proprietários, mídia. Parar lá.
+PROMPT E4: visitas, propostas, vendas e comissões. Parar lá.

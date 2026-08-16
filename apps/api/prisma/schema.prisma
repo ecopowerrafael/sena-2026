@@ -64,6 +64,13 @@ model Tenant {
   leadStatusLogs  LeadStatusHistory[]
   activities      Activity[]
 
+
+  properties         Property[]
+  propertyOwners    PropertyOwner[]
+  propertyFeatures  PropertyFeature[]
+  assets            Asset[]
+  interestProfiles  InterestProfile[]
+
   @@index([status])
   @@map("tenants")
 }
@@ -94,6 +101,10 @@ model User {
   leadsAssigned      Lead[]              @relation("LeadBroker")
   leadStatusChanges  LeadStatusHistory[] @relation("LeadStatusAuthor")
   activitiesCreated  Activity[]          @relation("ActivityAuthor")
+
+
+  propertiesCaptored Property[] @relation("PropertyCaptator")
+  assetsCreated      Asset[]    @relation("AssetAuthor")
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -276,6 +287,8 @@ model Client {
 
   @@unique([tenantId, documentHash])
   @@index([tenantId, name])
+  propertyOwnerships PropertyOwner[]
+  interestProfile    InterestProfile?
   @@index([tenantId, responsibleBrokerId])
   @@map("clients")
 }
@@ -404,4 +417,215 @@ model Activity {
   @@index([clientId, occurredAt])
   @@index([leadId, occurredAt])
   @@map("activities")
+}
+
+// ---------------------------------------------------------------------------
+// Etapa 3 — imóveis, proprietários, mídia e interesse / matching
+// ---------------------------------------------------------------------------
+
+enum PropertyType {
+  RESIDENTIAL_HOUSE
+  APARTMENT
+  PENTHOUSE
+  TOWNHOUSE
+  LOT
+  FARM
+  COMMERCIAL_OFFICE
+  WAREHOUSE
+  BUILDING
+}
+
+enum PropertyPurpose {
+  SALE
+  RENT
+  BOTH
+}
+
+enum PropertyStatus {
+  CAPTURING
+  AVAILABLE
+  RESERVED
+  NEGOTIATION
+  SOLD
+  RENTED
+  SUSPENDED
+}
+
+enum DocumentationStatus {
+  FULLY_REGULARIZED
+  IN_INVENTORY
+  HABITE_PENDING
+  FINANCEABLE
+}
+
+enum PropertyObjective {
+  BUY
+  RENT
+}
+
+enum PaymentMethod {
+  CASH
+  FINANCING
+  BARTER
+  DIRECT_INSTALLMENTS
+  FGTS
+}
+
+enum AssetStorageProvider {
+  LOCAL
+  S3
+}
+
+enum PropertyMediaType {
+  PHOTO
+  VIDEO
+  DOCUMENT
+}
+
+/// Imóvel: o coração do negócio. Pode ter múltiplos proprietários (PropertyOwner).
+model Property {
+  id                   String             @id @default(cuid())
+  tenantId             String
+  code                 String             // código único por tenant
+  title                String
+  type                 PropertyType
+  purpose              PropertyPurpose
+  captatorBrokerId     String?
+  salePrice            Decimal?           @db.Decimal(15, 2)
+  rentalPrice          Decimal?           @db.Decimal(15, 2)
+  condoFee             Decimal?           @db.Decimal(15, 2)
+  iptu                 Decimal?           @db.Decimal(15, 2)
+  addressLine          String
+  number               String?
+  complement           String?            @db.VarChar(120)
+  neighborhood         String
+  city                 String
+  state                String             @db.VarChar(2)
+  zipCode              String?            @db.VarChar(10)
+  latitude             Decimal?           @db.Decimal(10, 8)
+  longitude            Decimal?           @db.Decimal(11, 8)
+  totalArea            Decimal?           @db.Decimal(10, 2)
+  privateArea          Decimal?           @db.Decimal(10, 2)
+  bedrooms             Int?
+  suites               Int?
+  bathrooms           Int?
+  parkingSpots        Int?
+  documentationStatus  DocumentationStatus @default(FULLY_REGULARIZED)
+  isExclusive         Boolean             @default(false)
+  exclusivityEndsAt   DateTime?
+  status              PropertyStatus      @default(AVAILABLE)
+  description         String?             @db.Text
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  deletedAt           DateTime?
+
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  captatorBroker  User?             @relation("PropertyCaptator", fields: [captatorBrokerId], references: [id])
+  owners          PropertyOwner[]
+  media           PropertyMedia[]
+  features        PropertyFeature[]
+  interestMatches InterestProfile[] @relation("PropertyMatches")
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+  @@index([tenantId, captatorBrokerId])
+  @@map("properties")
+}
+
+/// Vínculo entre Property e Client (um ou mais proprietários). isPrimary define responsável.
+model PropertyOwner {
+  id                  String  @id @default(cuid())
+  tenantId            String
+  propertyId          String
+  clientId            String
+  ownershipPercentage Int?    // 0-100
+  isPrimary           Boolean @default(false)
+  createdAt           DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  client   Client   @relation(fields: [clientId], references: [id])
+
+  @@unique([propertyId, clientId])
+  @@index([tenantId])
+  @@map("property_owners")
+}
+
+/// Característ icas do imóvel (piscina, churrasqueira, etc).
+model PropertyFeature {
+  id         String   @id @default(cuid())
+  tenantId   String
+  propertyId String
+  name       String   @db.VarChar(120)
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, name])
+  @@map("property_features")
+}
+
+/// Referência a ativo (foto, vídeo, documento). Binários não vão para MySQL.
+model Asset {
+  id               String                @id @default(cuid())
+  tenantId         String
+  kind             String                @db.VarChar(32) // 'photo', 'video', 'document'
+  storageProvider  AssetStorageProvider
+  path             String                @db.VarChar(512)
+  mimeType         String                @db.VarChar(128)
+  size             Int
+  checksum         String                @db.VarChar(64)
+  createdByUserId  String?
+  createdAt        DateTime              @default(now())
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  createdBy User?           @relation("AssetAuthor", fields: [createdByUserId], references: [id])
+  inMedia   PropertyMedia[]
+
+  @@index([tenantId, kind])
+  @@map("assets")
+}
+
+/// Ligação entre Property e Asset com tipo de mídia e ordem.
+model PropertyMedia {
+  id         String            @id @default(cuid())
+  propertyId String
+  assetId    String
+  type       PropertyMediaType
+  sortOrder  Int               @default(0)
+  createdAt  DateTime          @default(now())
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  asset    Asset    @relation(fields: [assetId], references: [id])
+
+  @@unique([propertyId, assetId])
+  @@index([propertyId, sortOrder])
+  @@map("property_media")
+}
+
+/// Perfil de interesse: o que o cliente busca.
+model InterestProfile {
+  id                String         @id @default(cuid())
+  tenantId          String
+  clientId          String         @unique
+  objective         PropertyObjective
+  minPrice          Decimal?       @db.Decimal(15, 2)
+  maxPrice          Decimal?       @db.Decimal(15, 2)
+  minBedrooms       Int?
+  minSuites         Int?
+  minParkingSpots   Int?
+  paymentMethod     Json @default("[]") // array de PaymentMethod
+  needsFinancing    Boolean        @default(false)
+  notes             String?        @db.Text
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  tenant            Tenant     @relation(fields: [tenantId], references: [id])
+  client            Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  preferredNeighborhoods String? @db.Text // CSV ou JSON
+  matchedProperties Property[] @relation("PropertyMatches")
+
+  @@index([tenantId, objective])
+  @@map("interest_profiles")
 }

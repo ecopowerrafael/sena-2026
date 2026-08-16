@@ -1,8 +1,11 @@
 import "reflect-metadata";
 import { Logger, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { API_PREFIX } from "@sena/shared";
+import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/all-exceptions.filter";
 import { JsonLogger } from "./common/json.logger";
@@ -14,11 +17,15 @@ async function bootstrap(): Promise<void> {
   loadDotenv();
   const env = loadEnv();
 
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: new JsonLogger(env.NODE_ENV === "production"),
   });
 
   app.setGlobalPrefix(API_PREFIX.replace(/^\//, ""));
+  // O frontend é SPA same-site: sem CSP de página, mas com os demais headers do helmet.
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
+  app.use(cookieParser());
+  app.set("trust proxy", 1);
   app.enableCors({ origin: env.CORS_ORIGIN, credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());

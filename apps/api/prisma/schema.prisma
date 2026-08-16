@@ -1,5 +1,5 @@
-// SENA CRM — schema inicial (Etapa 0).
-// Nesta etapa existe apenas a fundação multi-tenant; o domínio entra a partir da Etapa 1.
+// SENA CRM — schema.
+// Etapa 0: fundação multi-tenant. Etapa 1: acesso, sessão, equipes e auditoria.
 
 generator client {
   provider     = "prisma-client"
@@ -13,18 +13,177 @@ datasource db {
   provider = "mysql"
 }
 
-/// Imobiliária. Todo dado operacional futuro será vinculado a um Tenant.
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum UserRole {
+  PLATFORM_ADMIN
+  ADMIN
+  MANAGER
+  BROKER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum TeamStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/// Imobiliária. Todo dado operacional é vinculado a um Tenant.
 model Tenant {
-  id        String    @id @default(cuid())
-  slug      String    @unique
+  id        String       @id @default(cuid())
+  slug      String       @unique
   name      String
   legalName String?
-  document  String?   @unique // CNPJ
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  document  String?      @unique // CNPJ
+  timezone  String       @default("America/Sao_Paulo")
+  locale    String       @default("pt-BR")
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
   deletedAt DateTime?
 
-  @@index([isActive])
+  users          User[]
+  teams          Team[]
+  brokerProfiles BrokerProfile[]
+  sessions       RefreshSession[]
+  resetTokens    PasswordResetToken[]
+  auditLogs      AuditLog[]
+
+  @@index([status])
   @@map("tenants")
+}
+
+/// Acesso ao sistema. Dados profissionais do corretor ficam em BrokerProfile.
+model User {
+  id           String     @id @default(cuid())
+  tenantId     String
+  name         String
+  email        String
+  passwordHash String     @db.VarChar(255)
+  role         UserRole   @default(BROKER)
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+
+  tenant        Tenant               @relation(fields: [tenantId], references: [id])
+  brokerProfile BrokerProfile?
+  managedTeams  Team[]               @relation("TeamManager")
+  ledProfiles   BrokerProfile[]      @relation("BrokerManager")
+  sessions      RefreshSession[]
+  resetTokens   PasswordResetToken[]
+  auditLogs     AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId, status])
+  @@map("users")
+}
+
+model Team {
+  id            String     @id @default(cuid())
+  tenantId      String
+  name          String
+  managerUserId String?
+  status        TeamStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id])
+  manager User?           @relation("TeamManager", fields: [managerUserId], references: [id])
+  brokers BrokerProfile[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+  @@map("teams")
+}
+
+model BrokerProfile {
+  id            String   @id @default(cuid())
+  tenantId      String
+  userId        String   @unique
+  creci         String?
+  phone         String?
+  whatsapp      String?
+  teamId        String?
+  managerUserId String?
+  avatarUrl     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
+  team    Team?  @relation(fields: [teamId], references: [id])
+  manager User?  @relation("BrokerManager", fields: [managerUserId], references: [id])
+
+  @@index([tenantId])
+  @@index([teamId])
+  @@map("broker_profiles")
+}
+
+/// Sessão de refresh rotativa e revogável. Só o hash do token é persistido.
+model RefreshSession {
+  id           String    @id @default(cuid())
+  tenantId     String
+  userId       String
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  userAgent    String?   @db.VarChar(512)
+  ip           String?   @db.VarChar(64)
+  createdAt    DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("refresh_sessions")
+}
+
+/// Token de recuperação de senha: uso único, expira e é persistido apenas como hash.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tenantId  String
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId, usedAt])
+  @@map("password_reset_tokens")
+}
+
+/// Auditoria de ações críticas (ARCHITECTURE.md §20). Nunca guarda segredos.
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  userId    String?
+  action    String   @db.VarChar(64)
+  entity    String?  @db.VarChar(64)
+  entityId  String?
+  ip        String?  @db.VarChar(64)
+  userAgent String?  @db.VarChar(512)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
 }

@@ -26,7 +26,10 @@ import {
   ArrowLeft,
   Layers,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
+import type { SessionUser } from "@sena/shared";
+import { canSeeTab } from "../../routes/permissions";
 
 export type SenaTab =
   | "dashboard"
@@ -58,7 +61,16 @@ interface SenaSidebarProps {
   onBackToPortfolio: () => void;
   isMobileOpen: boolean;
   setIsMobileOpen: (open: boolean) => void;
+  user: SessionUser | null;
+  onLogout: () => void;
 }
+
+const ROLE_LABEL: Record<string, string> = {
+  ADMIN: "Administrador",
+  MANAGER: "Gerente",
+  BROKER: "Corretor",
+  PLATFORM_ADMIN: "Administrador da plataforma",
+};
 
 export const SenaSidebar: React.FC<SenaSidebarProps> = ({
   currentTab,
@@ -66,6 +78,8 @@ export const SenaSidebar: React.FC<SenaSidebarProps> = ({
   onBackToPortfolio,
   isMobileOpen,
   setIsMobileOpen,
+  user,
+  onLogout,
 }) => {
   const handleNav = (tab: SenaTab) => {
     onSelectTab(tab);
@@ -192,7 +206,13 @@ export const SenaSidebar: React.FC<SenaSidebarProps> = ({
         },
       ],
     },
-  ];
+  ]
+    // Itens sem permissão somem do menu; o bloqueio real continua sendo do backend.
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => canSeeTab(item.id, user?.role)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <>
@@ -302,19 +322,29 @@ export const SenaSidebar: React.FC<SenaSidebarProps> = ({
         <div className="p-3 border-t border-slate-800/80 bg-slate-950/40">
           <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-850/60 border border-slate-800">
             <div className="relative">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-                alt="Carlos Eduardo Sena"
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-amber-500/30"
-              />
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 font-bold flex items-center justify-center text-xs ring-2 ring-amber-500/30">
+                {(user?.name ?? "?")
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((part) => part.charAt(0).toUpperCase())
+                  .join("")}
+              </div>
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white truncate">Carlos E. Sena</p>
+              <p className="text-xs font-semibold text-white truncate">{user?.name ?? "Sessão"}</p>
               <p className="text-[10px] text-amber-400 font-medium truncate">
-                Diretor Geral • CRECI-SP
+                {user ? `${ROLE_LABEL[user.role] ?? user.role} • ${user.tenantName}` : ""}
               </p>
             </div>
+            <button
+              onClick={onLogout}
+              title="Sair"
+              aria-label="Sair"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>

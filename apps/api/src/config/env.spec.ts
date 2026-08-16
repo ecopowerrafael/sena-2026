@@ -1,7 +1,10 @@
 import { loadEnv } from "./env";
 
 describe("loadEnv", () => {
-  const base = { DATABASE_URL: "mysql://root:root@localhost:3306/sena_crm" };
+  const base = {
+    DATABASE_URL: "mysql://root:root@localhost:3306/sena_crm",
+    JWT_SECRET: "segredo-de-teste-com-mais-de-32-caracteres",
+  };
 
   it("aplica defaults de desenvolvimento", () => {
     const env = loadEnv(base as NodeJS.ProcessEnv);
@@ -19,6 +22,12 @@ describe("loadEnv", () => {
 
   it("falha sem DATABASE_URL", () => {
     expect(() => loadEnv({} as NodeJS.ProcessEnv)).toThrow(/DATABASE_URL/);
+  });
+
+  it("falha com JWT_SECRET curto demais", () => {
+    expect(() => loadEnv({ ...base, JWT_SECRET: "curto" } as NodeJS.ProcessEnv)).toThrow(
+      /JWT_SECRET/
+    );
   });
 
   it("falha com NODE_ENV inválido", () => {

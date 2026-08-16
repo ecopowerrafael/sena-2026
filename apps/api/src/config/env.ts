@@ -13,6 +13,18 @@ const envSchema = z.object({
     .default("true")
     .transform((value) => value === "true"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL é obrigatório (MySQL 8)."),
+
+  // Sessão (ARCHITECTURE.md §8.3)
+  JWT_SECRET: z.string().min(32, "JWT_SECRET precisa de pelo menos 32 caracteres."),
+  ACCESS_TOKEN_TTL_MINUTES: z.coerce.number().int().positive().default(15),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
+  LOGIN_RATE_LIMIT: z.coerce.number().int().positive().default(5),
+  LOGIN_RATE_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+
+  // Seed de administrador — apenas dev/uso controlado.
+  SEED_ADMIN_EMAIL: z.string().email().optional(),
+  SEED_ADMIN_PASSWORD: z.string().min(10).optional(),
+  SEED_ADMIN_NAME: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,9 +1,11 @@
-import type { ApiError, ApiErrorBody, HealthResponse } from "@sena/shared";
+import { CSRF_COOKIE, CSRF_HEADER, type ApiError, type ApiErrorBody } from "@sena/shared";
 
 const BASE_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:3333/api/v1").replace(
   /\/$/,
   ""
 );
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export class ApiRequestError extends Error {
   constructor(
@@ -17,26 +19,60 @@ export class ApiRequestError extends Error {
 
 interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
+  /** Interno: evita laço de refresh. */
+  skipRefresh?: boolean;
 }
 
-/**
- * Cliente HTTP base da Etapa 0.
- * Desenvolve o contrato de `{ data }` / `{ error }` definido em ARCHITECTURE.md §5.2.
- * Ainda não há autenticação: `credentials: "include"` já fica pronto para o cookie da Etapa 1.
- */
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, headers, ...rest } = options;
+function readCookie(name: string): string | undefined {
+  return document.cookie
+    .split("; ")
+    .find((entry) => entry.startsWith(`${name}=`))
+    ?.split("=")[1];
+}
 
-  const response = await fetch(`${BASE_URL}${path.startsWith("/") ? path : `/${path}`}`, {
+async function rawRequest(path: string, options: RequestOptions): Promise<Response> {
+  const { body, headers, method = "GET", ...rest } = options;
+  const csrf = readCookie(CSRF_COOKIE);
+
+  return fetch(`${BASE_URL}${path.startsWith("/") ? path : `/${path}`}`, {
     ...rest,
+    method,
     credentials: "include",
     headers: {
       Accept: "application/json",
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(!SAFE_METHODS.has(method) && csrf ? { [CSRF_HEADER]: csrf } : {}),
       ...headers,
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
+}
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+/** Uma única rotação por vez, mesmo com várias requisições falhando juntas. */
+async function refreshSession(): Promise<boolean> {
+  refreshInFlight ??= rawRequest("/auth/refresh", { method: "POST", skipRefresh: true })
+    .then((response) => response.ok)
+    .catch(() => false)
+    .finally(() => {
+      refreshInFlight = null;
+    });
+
+  return refreshInFlight;
+}
+
+/**
+ * Cliente HTTP: envelope `{ data }` / `{ error }` (ARCHITECTURE.md §5.2),
+ * cookie de sessão HttpOnly, header CSRF em operações mutáveis e
+ * uma tentativa de refresh quando o access token expira.
+ */
+export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  let response = await rawRequest(path, options);
+
+  if (response.status === 401 && !options.skipRefresh && (await refreshSession())) {
+    response = await rawRequest(path, { ...options, skipRefresh: true });
+  }
 
   const isJson = response.headers.get("content-type")?.includes("application/json");
   const payload = isJson ? await response.json() : null;
@@ -58,5 +94,3 @@ export const api = {
   patch: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: "PATCH", body }),
   delete: <T>(path: string) => apiRequest<T>(path, { method: "DELETE" }),
 };
-
-export const getHealth = (): Promise<HealthResponse> => api.get<HealthResponse>("/health");

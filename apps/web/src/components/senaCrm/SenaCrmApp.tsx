@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { pathFromTab, tabFromPath } from "../../routes/senaRoutes";
+import { useAuth } from "../../features/auth/AuthProvider";
 import { SenaSidebar, SenaTab } from "./SenaSidebar";
 import { SenaHeader } from "./SenaHeader";
 import { DashboardModule } from "./DashboardModule";
@@ -63,6 +64,11 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
     },
     [navigate]
   );
+
+  const { user, logout } = useAuth();
+  const handleLogout = useCallback(() => {
+    void logout().then(() => navigate("/login", { replace: true }));
+  }, [logout, navigate]);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -393,6 +399,8 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
         }}
         isMobileOpen={isMobileMenuOpen}
         setIsMobileOpen={setIsMobileMenuOpen}
+        user={user}
+        onLogout={handleLogout}
       />
 
       {/* Main App Canvas */}

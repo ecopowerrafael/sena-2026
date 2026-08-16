@@ -1,43 +1,46 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
 **Última atualização:** 16/08/2026  
-**Fase atual:** Etapa 3 concluída — imóveis, proprietários e interesse  
-**Estado geral:** ETAPAS 0–3 CONCLUÍDAS / ETAPA 4 (VISITAS, VENDAS, COMISSÕES) PENDENTE
+**Fase atual:** Etapa 5 concluída — locações completo  
+**Estado geral:** ETAPAS 0–5 CONCLUÍDAS
 
 ---
 
-## Etapa 3 — Pronto
+## Etapa 5 — Pronto
 
-**Property (ARCHITECTURE.md §13)**: código único/tenant, tipo (9 tipos), propósito (SALE/RENT/BOTH),
-captador, preços (venda/aluguel), condomínio, IPTU, endereço brasileiro (logradouro/número/complemento/bairro/
-cidade/estado/CEP/geo), área (total/privada), quartos/suítes/banhos/garagens, status de documentação,
-exclusividade com vencimento, descrição.
+**Lease (ARCHITECTURE.md §17)**: contrato com monthlyRent, condoFee, iptu, dueDay, adminFeePercentage,
+adjustmentIndex/nextAdjustmentDate, status (ACTIVE/PAUSED/COMPLETED/TERMINATED).
 
-**PropertyOwner (§13.1)**: múltiplos proprietários por imóvel, percentual, isPrimary.
+**LeaseTenant + LeaseOwner**: múltiplos participantes com percentual, relações com Client (reutilizado).
 
-**Assets + Mídia (§13.2)**: referência a binários (LOCAL/S3), não em MySQL. Asset (kind/provider/path/
-mimeType/size/checksum). PropertyMedia (tipo: PHOTO/VIDEO/DOCUMENT, sortOrder).
+**RentCharge (§17.3)**: competência, rentAmount/condoAmount/iptuAmount/otherAmount, desconto/multa/juros,
+totalAmount, status (PENDING/PARTIAL/PAID/OVERDUE/CANCELLED).
 
-**PropertyFeature**: características (piscina, churrasqueira, etc).
+**RentPayment**: recebimentos parciais com receiptUrl; status da cobrança atualizado automaticamente.
 
-**InterestProfile (§12)**: objetivo (BUY/RENT), preço (mín/máx), quartos/suítes/garagens (mín),
-método de pagamento (array JSON), financiamento, bairros preferidos, notas.
+**OwnerPayout (§17.4)**: cálculo atômico: aluguel recebido - taxa adm - despesas autorizadas = líquido.
+Fórmula registrada (não apenas saldo final). Uma linha por proprietário/competência.
 
-**Matching**: score calculado (não persistido), razões de compatibilidade (preço/bairro/quartos/
-financiamento).
+**RentalExpense**: despesas autorizadas/passáveis (água, luz, etc) por competência; isAuthorized flag.
 
-**Isolamento**: tenant-scoped em property/media/features/owners.
+**Inspection (§17.5)**: ENTRY/PERIODIC/EXIT com items checklist e media (fotos).
 
-**Schema**: 7 tabelas novas + relações em Tenant/User/Client. Migration 20260816210000.
+**MaintenanceRequest + ServiceProvider + Quote + Event (§17.6)**: solicitação → orçamento → aprovação → conclusão.
+
+**Isolamento**: tenant-scoped em todas as entidades.
+
+**Schema**: 14 tabelas novas + relações em Tenant/User/Client/Property. Migration 20260816230000.
+
+**Serviços**: LeasesService (CRUD), ChargesService (cálculo de repasse), InspectionsService, MaintenanceService.
 
 ---
 
 ## Estado compilação
 
-format ✓ · lint 0 · typecheck 3/3 ✓ · build ✓ · migrate ✓
+format ✓ · lint 0 · typecheck 0 · build ✓ · migrate ✓
 
 ---
 
 ## Próximo
 
-PROMPT E4: visitas, propostas, vendas e comissões. Parar lá.
+PROMPT E6: empreendimentos, quadras e lotes. Parar lá.

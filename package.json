@@ -1,0 +1,38 @@
+{
+  "name": "sena-crm",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SENA CRM Imobiliário 2026 — monorepo (web + api + shared)",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev -w @sena/api\" \"npm run dev -w @sena/web\"",
+    "dev:web": "npm run dev -w @sena/web",
+    "dev:api": "npm run dev -w @sena/api",
+    "build": "npm run build -w @sena/shared && npm run build -w @sena/api && npm run build -w @sena/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspaces --if-present",
+    "prisma:generate": "npm run prisma:generate -w @sena/api",
+    "prisma:migrate": "npm run prisma:migrate -w @sena/api",
+    "prisma:seed": "npm run prisma:seed -w @sena/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "typescript": "~5.8.2",
+    "typescript-eslint": "^8.19.0"
+  }
+}

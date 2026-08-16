@@ -1,0 +1,30 @@
+// SENA CRM — schema inicial (Etapa 0).
+// Nesta etapa existe apenas a fundação multi-tenant; o domínio entra a partir da Etapa 1.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+  runtime      = "nodejs"
+}
+
+// A URL de conexão fica em prisma.config.ts (exigência do Prisma 7).
+datasource db {
+  provider = "mysql"
+}
+
+/// Imobiliária. Todo dado operacional futuro será vinculado a um Tenant.
+model Tenant {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String
+  legalName String?
+  document  String?   @unique // CNPJ
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([isActive])
+  @@map("tenants")
+}

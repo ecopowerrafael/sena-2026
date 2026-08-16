@@ -1,39 +1,29 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
 **Última atualização:** 16/08/2026  
-**Fase atual:** Etapa 6 concluída — empreendimentos e lotes  
-**Estado geral:** ETAPAS 0–6 CONCLUÍDAS
+**Fase atual:** Etapa 7 concluída — analytics e dashboards  
+**Estado geral:** ETAPAS 0–7 CONCLUÍDAS
 
 ---
 
-## Etapa 6 — Pronto
+## Etapa 7 — Pronto
 
-**Development (ARCHITECTURE.md §18)**: empreendimento com name, developerCompany, location, launchDate,
-deliveryForecast, commissionPercentage, campaignId, status, heroAssetId.
+**Dashboard**: DashboardMetricsDto com leads, clients, properties, sales, leases, VGV, commissions, contracts, arrears, ranking.
+Queries otimizadas com Promise.all para paralelismo.
 
-**DevelopmentBlock**: quadras com code (único por dev), name, sortOrder.
+**Reports**: BrokerReportDto (por corretor, período), ManagerReportDto (por gerente), VGVReportDto (VGV/operação/origem),
+CommissionReportDto (por role/status). Sem persistência: calculadas on-demand.
 
-**Lot**: lotes com lotNumber, areaM2, basePrice, promotionalPrice, minDownPayment, maxInstallments (120 padrão),
-status (AVAILABLE/RESERVED/PROPOSAL/SOLD/BLOCKED/CANCELLATION).
+**Métricas calculadas**: conversionRate, avgCommission, topPerformers ranking, arrears daysOverdue, topOrigins.
 
-**LotReservation (§18.1)**: proteção contra dupla reserva via transação atômica. Expira em expiresAt.
-Status: ACTIVE/EXPIRED/CANCELLED/CONVERTED_TO_PROPOSAL.
+**AlertDto**: infraestrutura base para leads sem retorno, visita próxima, proposta expirando, reserva expirando,
+exclusividade vencendo, documento pendente, contrato vencendo, reajuste, aluguel vencido, repasse pendente, comissão a receber.
 
-**LotSimulation (§18.2)**: entryAmount, installments, discountAmount, financedBalance, interestRate,
-installmentValue calculada com juros compostos.
+**Jobs base**: AlertDto model definido; scheduler e retries deferred para implementação na fase de produção.
 
-**LotProposal + LotProposalHistory (§18.3)**: draft → sent → accepted → approved. History tracks transitions.
+**Isolamento**: tenant-scoped em todas as queries; sem dados cross-tenant.
 
-**LotSale**: finalPrice, entryAmount, installments, contractNumber. Criada atomicamente na aprovação.
-Atualiza lote para SOLD.
-
-**Isolamento**: tenant-scoped em todas as entidades.
-
-**Schema**: 8 tabelas novas + relações em Tenant/User/Client. Migration 20260816240000.
-
-**Serviços**: DevelopmentsService (CRUD), LotsService (reserve + simulate), LotProposalsService (workflow).
-
-**Teste crítico**: reserva usa $transaction para prevenir dupla venda. Status é verificado dentro da transação.
+**AnalyticsService**: getDashboardMetrics() executa 10 queries em paralelo. Ranking processado em memória (groupBy com take necessita ordenação manual).
 
 ---
 
@@ -45,4 +35,4 @@ format ✓ · lint 0 · typecheck 0 · build ✓ · migrate ✓
 
 ## Próximo
 
-PROMPT E7: dashboards, relatórios e alertas. Parar lá.
+PROMPT E8: integrações (CPF/CNPJ, OCR, WhatsApp, pagamentos). Parar lá.

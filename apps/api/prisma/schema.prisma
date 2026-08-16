@@ -79,6 +79,21 @@ model Tenant {
   commissions     Commission[]
   commissionSplits CommissionSplit[]
 
+  leases              Lease[]
+  leaseTenantsRel     LeaseTenant[]
+  leaseOwnersRel      LeaseOwner[]
+  rentCharges         RentCharge[]
+  rentPayments        RentPayment[]
+  ownerPayouts        OwnerPayout[]
+  rentalExpenses      RentalExpense[]
+  inspections         Inspection[]
+  inspectionItems     InspectionItem[]
+  inspectionMedia     InspectionMedia[]
+  maintenanceRequests MaintenanceRequest[]
+  serviceProviders    ServiceProvider[]
+  maintenanceQuotes   MaintenanceQuote[]
+  maintenanceEvents   MaintenanceEvent[]
+
   @@index([status])
   @@map("tenants")
 }
@@ -120,6 +135,8 @@ model User {
   salesBroker          Sale[] @relation("SaleBroker")
   salesCaptator        Sale[] @relation("SaleCaptator")
   commissionSplits     CommissionSplit[]
+
+  responsibleLeases   Lease[]
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -306,6 +323,10 @@ model Client {
   proposals    Proposal[]
   sales        Sale[] @relation("SaleBuyer")
   saleSellers  SaleSeller[]
+
+  leaseTenantsRel  LeaseTenant[] @relation("LeaseTenant")
+  leaseOwnersRel   LeaseOwner[] @relation("LeaseOwner")
+  ownerPayouts     OwnerPayout[]
 
   propertyOwnerships PropertyOwner[]
   interestProfile    InterestProfile?
@@ -551,6 +572,7 @@ model Property {
   visits       Visit[]
   proposals    Proposal[]
   sales        Sale[]
+  leases       Lease[]
 
   @@index([tenantId, captatorBrokerId])
   @@map("properties")
@@ -870,3 +892,343 @@ model CommissionSplit {
   @@index([tenantId, status])
   @@map("commission_splits")
 }
+
+// ---------------------------------------------------------------------------
+// Etapa 5 — locações, cobranças, repasses, vistorias e manutenção
+// ---------------------------------------------------------------------------
+
+enum LeaseStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  TERMINATED
+}
+
+enum InspectionType {
+  ENTRY
+  PERIODIC
+  EXIT
+}
+
+enum RentChargeStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum MaintenanceStatus {
+  REQUESTED
+  QUOTED
+  APPROVED
+  COMPLETED
+  CANCELLED
+}
+
+/// Contrato de locação.
+model Lease {
+  id                     String      @id @default(cuid())
+  tenantId               String
+  contractNumber         String      @db.VarChar(64)
+  propertyId             String
+  responsibleBrokerId    String?
+  monthlyRent            Decimal     @db.Decimal(15, 2)
+  condoFee               Decimal?    @db.Decimal(15, 2)
+  iptuFee                Decimal?    @db.Decimal(15, 2)
+  startDate              DateTime
+  endDate                DateTime
+  dueDay                 Int         @db.TinyInt
+  guaranteeType          String      @db.VarChar(64)
+  adminFeePercentage     Decimal     @db.Decimal(6, 2)
+  adjustmentIndex        String?     @db.VarChar(64)
+  nextAdjustmentDate     DateTime?
+  status                 LeaseStatus @default(ACTIVE)
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  tenant              Tenant         @relation(fields: [tenantId], references: [id])
+  property            Property       @relation(fields: [propertyId], references: [id])
+  responsibleBroker   User?          @relation(fields: [responsibleBrokerId], references: [id])
+  tenants             LeaseTenant[]
+  owners              LeaseOwner[]
+  charges             RentCharge[]
+  payouts             OwnerPayout[]
+  expenses            RentalExpense[]
+  inspections         Inspection[]
+  maintenanceRequests MaintenanceRequest[]
+
+  @@unique([tenantId, contractNumber])
+  @@index([propertyId, status])
+  @@index([tenantId, status])
+  @@map("leases")
+}
+
+/// Locatário de uma locação.
+model LeaseTenant {
+  id         String   @id @default(cuid())
+  tenantId   String
+  leaseId    String
+  clientId   String
+  percentage Decimal? @db.Decimal(5, 2)
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  lease  Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  client Client @relation("LeaseTenant", fields: [clientId], references: [id])
+
+  @@unique([leaseId, clientId])
+  @@index([leaseId])
+  @@map("lease_tenants")
+}
+
+/// Proprietário/beneficiário de uma locação (snapshot + relation).
+model LeaseOwner {
+  id         String   @id @default(cuid())
+  tenantId   String
+  leaseId    String
+  clientId   String
+  percentage Decimal  @db.Decimal(5, 2)
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  lease  Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  client Client @relation("LeaseOwner", fields: [clientId], references: [id])
+
+  @@unique([leaseId, clientId])
+  @@index([leaseId])
+  @@map("lease_owners")
+}
+
+/// Cobrança de aluguel (uma por competência/mês).
+model RentCharge {
+  id               String           @id @default(cuid())
+  tenantId         String
+  leaseId          String
+  competence       DateTime         @db.Date
+  dueDate          DateTime
+  rentAmount       Decimal          @db.Decimal(15, 2)
+  condoAmount      Decimal          @db.Decimal(15, 2)
+  iptuAmount       Decimal          @db.Decimal(15, 2)
+  otherAmount      Decimal          @db.Decimal(15, 2)
+  discountAmount   Decimal          @db.Decimal(15, 2)
+  fineAmount       Decimal          @db.Decimal(15, 2)
+  interestAmount   Decimal          @db.Decimal(15, 2)
+  totalAmount      Decimal          @db.Decimal(15, 2)
+  status           RentChargeStatus @default(PENDING)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id])
+  lease    Lease         @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  payments RentPayment[]
+
+  @@unique([leaseId, competence])
+  @@index([leaseId, status])
+  @@index([tenantId, status])
+  @@map("rent_charges")
+}
+
+/// Recebimento de aluguel (pode ser parcial).
+model RentPayment {
+  id           String   @id @default(cuid())
+  tenantId     String
+  chargeId     String
+  amount       Decimal  @db.Decimal(15, 2)
+  paymentDate  DateTime
+  receiptUrl   String?
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id])
+  charge RentCharge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+
+  @@index([chargeId])
+  @@index([tenantId, paymentDate])
+  @@map("rent_payments")
+}
+
+/// Repasse ao proprietário (cálculo de aluguel menos taxas e despesas).
+model OwnerPayout {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  leaseId             String
+  competence          DateTime @db.Date
+  ownerClientId       String
+  rentAmount          Decimal  @db.Decimal(15, 2)
+  adminFeeAmount      Decimal  @db.Decimal(15, 2)
+  expensesAmount      Decimal  @db.Decimal(15, 2)
+  netAmount           Decimal  @db.Decimal(15, 2)
+  payoutDate          DateTime?
+  payoutReceiptUrl    String?
+  notes               String?  @db.Text
+  createdAt           DateTime @default(now())
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+  lease       Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  ownerClient Client @relation(fields: [ownerClientId], references: [id])
+
+  @@unique([leaseId, competence, ownerClientId])
+  @@index([leaseId])
+  @@index([tenantId])
+  @@map("owner_payouts")
+}
+
+/// Despesas autorizadas/passáveis (água, luz, etc).
+model RentalExpense {
+  id            String   @id @default(cuid())
+  tenantId      String
+  leaseId       String
+  competence    DateTime @db.Date
+  description   String   @db.VarChar(255)
+  amount        Decimal  @db.Decimal(15, 2)
+  isAuthorized  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  authorizedAt  DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  lease  Lease  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  @@index([leaseId, competence])
+  @@index([tenantId])
+  @@map("rental_expenses")
+}
+
+/// Vistoria/inspeção de imóvel.
+model Inspection {
+  id            String          @id @default(cuid())
+  tenantId      String
+  leaseId       String
+  inspectionType InspectionType
+  inspectorName String?         @db.VarChar(180)
+  notes         String?         @db.Text
+  inspectedAt   DateTime
+  createdAt     DateTime        @default(now())
+
+  tenant Tenant               @relation(fields: [tenantId], references: [id])
+  lease  Lease                @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  items  InspectionItem[]
+  media  InspectionMedia[]
+
+  @@index([leaseId, inspectionType])
+  @@index([tenantId])
+  @@map("inspections")
+}
+
+/// Item de checklist em vistoria.
+model InspectionItem {
+  id             String   @id @default(cuid())
+  tenantId       String
+  inspectionId   String
+  description    String   @db.VarChar(255)
+  status         String   @db.VarChar(64)
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  inspection  Inspection  @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+  @@map("inspection_items")
+}
+
+/// Mídia/fotos da vistoria.
+model InspectionMedia {
+  id            String   @id @default(cuid())
+  tenantId      String
+  inspectionId  String
+  url           String
+  mimeType      String   @db.VarChar(64)
+  uploadedAt    DateTime @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  inspection  Inspection  @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+  @@map("inspection_media")
+}
+
+/// Solicitação de manutenção.
+model MaintenanceRequest {
+  id              String             @id @default(cuid())
+  tenantId        String
+  leaseId         String
+  description     String             @db.Text
+  status          MaintenanceStatus  @default(REQUESTED)
+  requestedAt     DateTime           @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime           @default(now())
+
+  tenant  Tenant                 @relation(fields: [tenantId], references: [id])
+  lease   Lease                  @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  quotes  MaintenanceQuote[]
+  events  MaintenanceEvent[]
+
+  @@index([leaseId, status])
+  @@index([tenantId])
+  @@map("maintenance_requests")
+}
+
+/// Prestador de serviço.
+model ServiceProvider {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String   @db.VarChar(180)
+  phone       String?  @db.VarChar(32)
+  email       String?  @db.VarChar(180)
+  category    String?  @db.VarChar(64)
+  notes       String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  tenant  Tenant                @relation(fields: [tenantId], references: [id])
+  quotes  MaintenanceQuote[]
+  events  MaintenanceEvent[]
+
+  @@index([tenantId, isActive])
+  @@map("service_providers")
+}
+
+/// Orçamento de manutenção.
+model MaintenanceQuote {
+  id              String   @id @default(cuid())
+  tenantId        String
+  requestId       String
+  providerId      String
+  description     String   @db.Text
+  amount          Decimal  @db.Decimal(15, 2)
+  dueDate         DateTime?
+  isApproved      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  approvedAt      DateTime?
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id])
+  request   MaintenanceRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  provider  ServiceProvider     @relation(fields: [providerId], references: [id])
+
+  @@index([requestId])
+  @@index([providerId])
+  @@map("maintenance_quotes")
+}
+
+/// Evento/conclusão de manutenção.
+model MaintenanceEvent {
+  id              String   @id @default(cuid())
+  tenantId        String
+  requestId       String
+  providerId      String
+  description     String   @db.Text
+  amount          Decimal  @db.Decimal(15, 2)
+  completedAt     DateTime @default(now())
+  invoiceUrl      String?
+  createdAt       DateTime @default(now())
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id])
+  request   MaintenanceRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  provider  ServiceProvider     @relation(fields: [providerId], references: [id])
+
+  @@index([requestId])
+  @@index([providerId])
+  @@map("maintenance_events")
+}
+

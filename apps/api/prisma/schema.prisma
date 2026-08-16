@@ -71,6 +71,14 @@ model Tenant {
   assets            Asset[]
   interestProfiles  InterestProfile[]
 
+  visits          Visit[]
+  proposals       Proposal[]
+  proposalHistory ProposalHistory[]
+  sales           Sale[]
+  saleSellers     SaleSeller[]
+  commissions     Commission[]
+  commissionSplits CommissionSplit[]
+
   @@index([status])
   @@map("tenants")
 }
@@ -105,6 +113,13 @@ model User {
 
   propertiesCaptored Property[] @relation("PropertyCaptator")
   assetsCreated      Asset[]    @relation("AssetAuthor")
+
+  visitsBroker         Visit[]
+  proposalsBroker      Proposal[] @relation("ProposalBroker")
+  proposalHistoryActor ProposalHistory[] @relation("ProposalHistoryActor")
+  salesBroker          Sale[] @relation("SaleBroker")
+  salesCaptator        Sale[] @relation("SaleCaptator")
+  commissionSplits     CommissionSplit[]
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -287,6 +302,11 @@ model Client {
 
   @@unique([tenantId, documentHash])
   @@index([tenantId, name])
+  visits       Visit[]
+  proposals    Proposal[]
+  sales        Sale[] @relation("SaleBuyer")
+  saleSellers  SaleSeller[]
+
   propertyOwnerships PropertyOwner[]
   interestProfile    InterestProfile?
   @@index([tenantId, responsibleBrokerId])
@@ -528,6 +548,10 @@ model Property {
 
   @@unique([tenantId, code])
   @@index([tenantId, status])
+  visits       Visit[]
+  proposals    Proposal[]
+  sales        Sale[]
+
   @@index([tenantId, captatorBrokerId])
   @@map("properties")
 }
@@ -628,4 +652,221 @@ model InterestProfile {
 
   @@index([tenantId, objective])
   @@map("interest_profiles")
+}
+
+// ---------------------------------------------------------------------------
+// Etapa 4 — visitas, propostas, vendas e comissões (transação atômica)
+// ---------------------------------------------------------------------------
+
+enum VisitStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum ProposalStatus {
+  DRAFT
+  SUBMITTED
+  COUNTER_PROPOSED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum SaleStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+
+enum CommissionStatus {
+  PENDING
+  EXPECTED
+  RECEIVED
+  SETTLED
+  CANCELLED
+}
+
+enum CommissionRole {
+  AGENCY
+  MANAGER
+  CAPTATOR
+  ATTENDANT_BROKER
+  NEGOTIATOR
+  PARTNER
+}
+
+/// Visita agendada a imóvel.
+model Visit {
+  id              String      @id @default(cuid())
+  tenantId        String
+  clientId        String
+  propertyId      String
+  brokerId        String
+  scheduledAt     DateTime
+  durationMinutes Int?
+  status          VisitStatus @default(SCHEDULED)
+  feedback        String?     @db.Text
+  impression      String?     @db.VarChar(255)
+  createdAt       DateTime    @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  client   Client   @relation(fields: [clientId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+  broker   User     @relation(fields: [brokerId], references: [id])
+
+  @@index([tenantId, scheduledAt])
+  @@index([propertyId, status])
+  @@map("visits")
+}
+
+/// Proposta de compra/aluguel.
+model Proposal {
+  id                   String          @id @default(cuid())
+  tenantId             String
+  code                 String
+  clientId             String
+  propertyId           String
+  brokerId             String
+  advertisedPrice      Decimal         @db.Decimal(15, 2)
+  proposedPrice        Decimal         @db.Decimal(15, 2)
+  downPayment          Decimal?        @db.Decimal(15, 2)
+  installmentsCount    Int?
+  installmentsValue    Decimal?        @db.Decimal(15, 2)
+  paymentMethod        String          @db.VarChar(64)
+  paymentDescription   String?         @db.Text
+  counterProposalPrice Decimal?        @db.Decimal(15, 2)
+  counterProposalNotes String?         @db.Text
+  status               ProposalStatus  @default(DRAFT)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id])
+  client   Client          @relation(fields: [clientId], references: [id])
+  property Property        @relation(fields: [propertyId], references: [id])
+  broker   User            @relation("ProposalBroker", fields: [brokerId], references: [id])
+  history  ProposalHistory[]
+  sale     Sale?
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+  @@map("proposals")
+}
+
+/// Histórico de mudanças em proposta.
+model ProposalHistory {
+  id         String  @id @default(cuid())
+  tenantId   String
+  proposalId String
+  actorId    String?
+  fromStatus ProposalStatus?
+  toStatus   ProposalStatus?
+  action     String  @db.VarChar(64)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  actor    User?    @relation("ProposalHistoryActor", fields: [actorId], references: [id])
+
+  @@index([proposalId, createdAt])
+  @@map("proposal_history")
+}
+
+/// Venda fechada (após proposta aprovada).
+model Sale {
+  id                   String               @id @default(cuid())
+  tenantId             String
+  code                 String
+  proposalId           String?              @unique
+  propertyId           String
+  buyerClientId        String
+  brokerId             String
+  captatorBrokerId     String?
+  finalSalePrice       Decimal              @db.Decimal(15, 2)
+  saleDate             DateTime
+  paymentType          String               @db.VarChar(64)
+  contractNumber       String?              @db.VarChar(64)
+  documentationStatus  DocumentationStatus
+  status               SaleStatus           @default(PENDING)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  proposal         Proposal?        @relation(fields: [proposalId], references: [id])
+  property         Property         @relation(fields: [propertyId], references: [id])
+  buyer            Client           @relation("SaleBuyer", fields: [buyerClientId], references: [id])
+  broker           User             @relation("SaleBroker", fields: [brokerId], references: [id])
+  captator         User?            @relation("SaleCaptator", fields: [captatorBrokerId], references: [id])
+  sellers          SaleSeller[]
+  commission       Commission?
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+  @@index([propertyId])
+  @@map("sales")
+}
+
+/// Múltiplos vendedores por venda.
+model SaleSeller {
+  id         String   @id @default(cuid())
+  tenantId   String
+  saleId     String
+  clientId   String
+  percentage Decimal? @db.Decimal(5, 2)
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@unique([saleId, clientId])
+  @@map("sale_sellers")
+}
+
+/// Comissão de uma venda (não armazenar dezenas de colunas fixas).
+model Commission {
+  id              String            @id @default(cuid())
+  tenantId        String
+  saleId          String?           @unique
+  baseValue       Decimal           @db.Decimal(15, 2)
+  totalPercentage Decimal           @db.Decimal(6, 2)
+  totalValue      Decimal           @db.Decimal(15, 2)
+  status          CommissionStatus  @default(PENDING)
+  expectedAt      DateTime?
+  receivedAt      DateTime?
+  settledAt       DateTime?
+  createdAt       DateTime          @default(now())
+
+  tenant Tenant              @relation(fields: [tenantId], references: [id])
+  sale   Sale?               @relation(fields: [saleId], references: [id])
+  splits CommissionSplit[]
+
+  @@index([tenantId, status])
+  @@map("commissions")
+}
+
+/// Split de comissão (múltiplos receptores, regra: soma <= total).
+model CommissionSplit {
+  id              String           @id @default(cuid())
+  tenantId        String
+  commissionId    String
+  recipientType   CommissionRole
+  recipientId     String?
+  recipientName   String?          @db.VarChar(180)
+  percentage      Decimal          @db.Decimal(6, 2)
+  amount          Decimal          @db.Decimal(15, 2)
+  status          CommissionStatus @default(PENDING)
+  paidAt          DateTime?
+  createdAt       DateTime         @default(now())
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  commission  Commission  @relation(fields: [commissionId], references: [id], onDelete: Cascade)
+  recipient   User?       @relation(fields: [recipientId], references: [id])
+
+  @@index([commissionId])
+  @@index([tenantId, status])
+  @@map("commission_splits")
 }

@@ -30,8 +30,6 @@ export class AdapterFactory {
     }
 
     // Placeholder para provedores reais (a implementar com credenciais reais)
-    throw new Error(
-      `Provider ${providerName} not implemented. Use 'fake' or 'dev' for testing.`
-    );
+    throw new Error(`Provider ${providerName} not implemented. Use 'fake' or 'dev' for testing.`);
   }
 }

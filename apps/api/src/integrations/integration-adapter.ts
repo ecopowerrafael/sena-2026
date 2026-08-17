@@ -16,9 +16,7 @@ export abstract class IntegrationAdapter {
     return { isValid: true };
   }
 
-  async validateDocument(
-    req: DocumentValidationRequest
-  ): Promise<DocumentValidationResult> {
+  async validateDocument(req: DocumentValidationRequest): Promise<DocumentValidationResult> {
     throw new Error("Not implemented");
   }
 

@@ -15,7 +15,9 @@ export class OcrFakeProvider extends IntegrationAdapter {
         documentNumber: `000.000.000-${Math.floor(Math.random() * 100)}`,
         holderName: "Pessoa Identificada",
         issuanceDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-        expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0],
       },
       confidence: 0.95,
     };

@@ -11,9 +11,7 @@ export class WhatsappFakeProvider extends IntegrationAdapter {
     const messageId = `wa_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
     // Log sanitizado (sem dados sensíveis)
-    console.log(
-      `[WhatsApp] Message queued: ${messageId} to ${req.phone.substring(0, 3)}***`
-    );
+    console.log(`[WhatsApp] Message queued: ${messageId} to ${req.phone.substring(0, 3)}***`);
 
     return {
       messageId,

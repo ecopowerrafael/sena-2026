@@ -1,4 +1,14 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min, IsArray, ValidateNested } from "class-validator";
+import {
+  IsDateString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  IsArray,
+  ValidateNested,
+} from "class-validator";
 import { Type } from "class-transformer";
 
 export class CreateLeaseDto {

@@ -19,9 +19,7 @@ export class WebhookService {
     });
 
     if (existing?.processed) {
-      this.logger.debug(
-        `Webhook already processed: ${externalId}, skipping...`
-      );
+      this.logger.debug(`Webhook already processed: ${externalId}, skipping...`);
       return;
     }
 
@@ -31,9 +29,7 @@ export class WebhookService {
       await this.handleEvent(tenantId, eventType, payload);
     } catch (err) {
       processError = String(err);
-      this.logger.error(
-        `Webhook processing failed: ${this.sanitizeLog(err)}`
-      );
+      this.logger.error(`Webhook processing failed: ${this.sanitizeLog(err)}`);
     }
 
     // Marca como processado (sucesso ou erro)
@@ -61,11 +57,7 @@ export class WebhookService {
     }
   }
 
-  private async handleEvent(
-    tenantId: string,
-    eventType: any,
-    payload: any
-  ): Promise<void> {
+  private async handleEvent(tenantId: string, eventType: any, payload: any): Promise<void> {
     switch (eventType) {
       case "PAYMENT_RECEIVED":
         await this.handlePaymentReceived(tenantId, payload);
@@ -86,10 +78,7 @@ export class WebhookService {
     }
   }
 
-  private async handlePaymentReceived(
-    tenantId: string,
-    payload: any
-  ): Promise<void> {
+  private async handlePaymentReceived(tenantId: string, payload: any): Promise<void> {
     const { paymentId } = payload.data as { paymentId: string };
 
     await this.prisma.payment.update({
@@ -100,10 +89,7 @@ export class WebhookService {
     this.logger.log(`Payment captured: ${paymentId}`);
   }
 
-  private async handlePaymentFailed(
-    tenantId: string,
-    payload: any
-  ): Promise<void> {
+  private async handlePaymentFailed(tenantId: string, payload: any): Promise<void> {
     const { paymentId, reason } = payload.data as {
       paymentId: string;
       reason: string;
@@ -121,10 +107,7 @@ export class WebhookService {
     this.logger.error(`Payment failed: ${paymentId} - ${reason}`);
   }
 
-  private async handleSplitPayout(
-    tenantId: string,
-    payload: any
-  ): Promise<void> {
+  private async handleSplitPayout(tenantId: string, payload: any): Promise<void> {
     const { splitId } = payload.data as { splitId: string };
 
     await this.prisma.paymentSplit.update({

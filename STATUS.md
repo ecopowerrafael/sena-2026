@@ -13,6 +13,7 @@
 **Provider abstraction**: Interface genérica `generate()` para pluggable LLMs; ClaudeProvider implementa @anthropic-ai/sdk.
 
 **Ferramentas read-only** (sem SQL arbitrário):
+
 - searchClients: nome/telefone/email
 - searchProperties: filtro tipo/status/preço
 - findMatchingProperties: compatibilidade cliente
@@ -23,6 +24,7 @@
 - getAvailableLots: lotes disponíveis
 
 **Ferramenta assistiva** (requer aprovação):
+
 - createFollowUpDraft: geração de rascunho (SMS/email)
 
 **Segurança**: tenant obrigatório, sem SQL gerado, apenas ferramentas explícitas, validação de permissão no backend, logging sanitizado.

@@ -111,7 +111,9 @@ export class AnalyticsService {
     ]);
 
     const avgPrice =
-      prices.length > 0 ? prices.reduce((sum, p) => sum + Number(p.salePrice || 0), 0) / prices.length : 0;
+      prices.length > 0
+        ? prices.reduce((sum, p) => sum + Number(p.salePrice || 0), 0) / prices.length
+        : 0;
 
     return { total, available, sold, rented, avgPrice };
   }
@@ -138,7 +140,7 @@ export class AnalyticsService {
       thisMonth,
       totalAmount: Number(amount._sum.finalSalePrice || 0),
       thisMonthAmount: Number(thisMonthAmount._sum.finalSalePrice || 0),
-      avgCommission: total > 0 ? Number(amount._sum.finalSalePrice || 0) * 0.05 / total : 0,
+      avgCommission: total > 0 ? (Number(amount._sum.finalSalePrice || 0) * 0.05) / total : 0,
     };
   }
 
@@ -200,9 +202,7 @@ export class AnalyticsService {
     const now = new Date();
     const daysOverdue =
       overdue.length > 0
-        ? Math.floor(
-            (now.getTime() - overdue[0].dueDate.getTime()) / (1000 * 60 * 60 * 24)
-          )
+        ? Math.floor((now.getTime() - overdue[0].dueDate.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
 
     return {
@@ -238,7 +238,9 @@ export class AnalyticsService {
     }));
   }
 
-  private async getOriginRanking(tenantId: string): Promise<DashboardMetricsDto["ranking"]["topOrigins"]> {
+  private async getOriginRanking(
+    tenantId: string
+  ): Promise<DashboardMetricsDto["ranking"]["topOrigins"]> {
     const leads = await this.prisma.lead.findMany({
       where: { tenantId },
       select: { originId: true },

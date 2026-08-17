@@ -307,7 +307,12 @@ export class AiService {
     });
 
     const total = sales.reduce((sum, s) => sum + Number(s.finalSalePrice || 0), 0);
-    return { brokerId, totalSales: sales.length, totalAmount: total, avgSale: sales.length > 0 ? total / sales.length : 0 };
+    return {
+      brokerId,
+      totalSales: sales.length,
+      totalAmount: total,
+      avgSale: sales.length > 0 ? total / sales.length : 0,
+    };
   }
 
   private async getOverdueRentals(auth: AuthContext) {
@@ -316,7 +321,14 @@ export class AiService {
       include: { lease: true },
       take: 10,
     });
-    return { count: charges.length, charges: charges.map((c) => ({id: c.id, amount: Number(c.totalAmount), lease: c.lease?.id})) };
+    return {
+      count: charges.length,
+      charges: charges.map((c) => ({
+        id: c.id,
+        amount: Number(c.totalAmount),
+        lease: c.lease?.id,
+      })),
+    };
   }
 
   private async getExpiringLeases(auth: AuthContext, input: { days?: number }) {

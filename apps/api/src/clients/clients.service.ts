@@ -305,10 +305,7 @@ export class ClientsService {
     }
   }
 
-  private async assertBrokerBelongsToTenant(
-    auth: AuthContext,
-    brokerId?: string
-  ): Promise<void> {
+  private async assertBrokerBelongsToTenant(auth: AuthContext, brokerId?: string): Promise<void> {
     if (!brokerId) {
       return;
     }

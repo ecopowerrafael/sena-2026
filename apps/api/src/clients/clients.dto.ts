@@ -1,5 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { CLIENT_ROLES, CLIENT_TYPES, type ClientRoleValue, type ClientTypeValue } from "@sena/shared";
+import {
+  CLIENT_ROLES,
+  CLIENT_TYPES,
+  type ClientRoleValue,
+  type ClientTypeValue,
+} from "@sena/shared";
 import {
   IsArray,
   IsBoolean,

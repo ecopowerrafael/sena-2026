@@ -38,7 +38,13 @@ export class ChargesService {
     const interestAmount = dto.interestAmount || 0;
 
     const totalAmount =
-      dto.rentAmount + dto.condoAmount + dto.iptuAmount + otherAmount - discountAmount + fineAmount + interestAmount;
+      dto.rentAmount +
+      dto.condoAmount +
+      dto.iptuAmount +
+      otherAmount -
+      discountAmount +
+      fineAmount +
+      interestAmount;
 
     const charge = await this.prisma.rentCharge.create({
       data: {
@@ -84,7 +90,9 @@ export class ChargesService {
 
     const chargeTotal = Number(charge.totalAmount);
     if (dto.amount > chargeTotal) {
-      throw new BadRequestException("Valor de pagamento não pode ser maior que o total da cobrança");
+      throw new BadRequestException(
+        "Valor de pagamento não pode ser maior que o total da cobrança"
+      );
     }
 
     await this.prisma.rentPayment.create({
@@ -104,8 +112,7 @@ export class ChargesService {
     });
 
     const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-    const status =
-      totalPaid >= chargeTotal ? "PAID" : totalPaid > 0 ? "PARTIAL" : "PENDING";
+    const status = totalPaid >= chargeTotal ? "PAID" : totalPaid > 0 ? "PARTIAL" : "PENDING";
 
     await this.prisma.rentCharge.update({
       where: { id: dto.chargeId },
@@ -177,7 +184,11 @@ export class ChargesService {
     return payouts.map((p) => this.payoutToDto(p));
   }
 
-  private async calculateOwnerPayouts(tenantId: string, leaseId: string, competence: Date): Promise<void> {
+  private async calculateOwnerPayouts(
+    tenantId: string,
+    leaseId: string,
+    competence: Date
+  ): Promise<void> {
     const [lease, expenses] = await Promise.all([
       this.prisma.lease.findUnique({
         where: { id: leaseId },

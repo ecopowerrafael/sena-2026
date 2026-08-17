@@ -1,8 +1,18 @@
 import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service";
 import type { AuthContext } from "../auth/auth.types";
-import type { MaintenanceRequestDto, ServiceProviderDto, MaintenanceQuoteDto, MaintenanceEventDto } from "@sena/shared";
-import { CreateMaintenanceRequestDto, CreateMaintenanceEventDto, CreateServiceProviderDto, ApproveMaintenanceQuoteDto } from "./rentals.dto";
+import type {
+  MaintenanceRequestDto,
+  ServiceProviderDto,
+  MaintenanceQuoteDto,
+  MaintenanceEventDto,
+} from "@sena/shared";
+import {
+  CreateMaintenanceRequestDto,
+  CreateMaintenanceEventDto,
+  CreateServiceProviderDto,
+  ApproveMaintenanceQuoteDto,
+} from "./rentals.dto";
 
 @Injectable()
 export class MaintenanceService {
@@ -23,7 +33,10 @@ export class MaintenanceService {
     return requests.map((r) => this.requestToDto(r));
   }
 
-  async createRequest(auth: AuthContext, dto: CreateMaintenanceRequestDto): Promise<MaintenanceRequestDto> {
+  async createRequest(
+    auth: AuthContext,
+    dto: CreateMaintenanceRequestDto
+  ): Promise<MaintenanceRequestDto> {
     const lease = await this.prisma.lease.findUnique({
       where: { id: dto.leaseId },
     });
@@ -55,7 +68,13 @@ export class MaintenanceService {
     return this.requestToDto(request);
   }
 
-  async createQuote(auth: AuthContext, requestId: string, providerId: string, description: string, amount: number): Promise<MaintenanceQuoteDto> {
+  async createQuote(
+    auth: AuthContext,
+    requestId: string,
+    providerId: string,
+    description: string,
+    amount: number
+  ): Promise<MaintenanceQuoteDto> {
     const request = await this.prisma.maintenanceRequest.findUnique({
       where: { id: requestId },
     });
@@ -128,7 +147,10 @@ export class MaintenanceService {
     });
   }
 
-  async completeEvent(auth: AuthContext, dto: CreateMaintenanceEventDto): Promise<MaintenanceEventDto> {
+  async completeEvent(
+    auth: AuthContext,
+    dto: CreateMaintenanceEventDto
+  ): Promise<MaintenanceEventDto> {
     const request = await this.prisma.maintenanceRequest.findUnique({
       where: { id: dto.requestId },
     });
@@ -186,7 +208,10 @@ export class MaintenanceService {
     return providers.map((p) => this.providerToDto(p));
   }
 
-  async createProvider(auth: AuthContext, dto: CreateServiceProviderDto): Promise<ServiceProviderDto> {
+  async createProvider(
+    auth: AuthContext,
+    dto: CreateServiceProviderDto
+  ): Promise<ServiceProviderDto> {
     const provider = await this.prisma.serviceProvider.create({
       data: {
         tenantId: auth.tenantId,

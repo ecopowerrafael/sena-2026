@@ -3,7 +3,12 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Auth } from "../auth/decorators";
 import type { AuthContext } from "../auth/auth.types";
 import { AiService } from "./ai.service";
-import type { AiConversationDto, AiMessageDto, SendMessageRequest, SendMessageResponse } from "@sena/shared";
+import type {
+  AiConversationDto,
+  AiMessageDto,
+  SendMessageRequest,
+  SendMessageResponse,
+} from "@sena/shared";
 
 @Controller("ai")
 @UseGuards(JwtAuthGuard)

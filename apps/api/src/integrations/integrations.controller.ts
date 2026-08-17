@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Param,
-  UseGuards,
-  HttpCode,
-} from "@nestjs/common";
+import { Controller, Post, Get, Body, Param, UseGuards, HttpCode } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Auth } from "../auth/decorators";
 import type { AuthContext } from "../auth/auth.types";
@@ -75,10 +67,7 @@ export class IntegrationsController {
 
   @Post("ocr/:id/approve")
   @HttpCode(200)
-  async approveOcr(
-    @Auth() auth: AuthContext,
-    @Param("id") id: string
-  ): Promise<OcrResultDto> {
+  async approveOcr(@Auth() auth: AuthContext, @Param("id") id: string): Promise<OcrResultDto> {
     return this.integrationsService.approveOcrResult(auth, id);
   }
 

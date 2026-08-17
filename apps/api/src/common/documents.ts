@@ -34,7 +34,10 @@ function isCnpjValid(digits: string): boolean {
   }
 
   const check = (length: number): number => {
-    const weights = length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const weights =
+      length === 12
+        ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
     let sum = 0;
     for (let i = 0; i < length; i += 1) {
       sum += Number(digits[i]) * weights[i];
@@ -70,5 +73,7 @@ export function maskDocument(type: DocumentKind | null, last4: string | null): s
     return null;
   }
 
-  return type === "CPF" ? `***.***.**${last4.slice(0, 1)}-${last4.slice(1)}` : `**.***.***/****-${last4}`;
+  return type === "CPF"
+    ? `***.***.**${last4.slice(0, 1)}-${last4.slice(1)}`
+    : `**.***.***/****-${last4}`;
 }

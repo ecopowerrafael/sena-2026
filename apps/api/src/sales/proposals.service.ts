@@ -87,13 +87,16 @@ export class ProposalsService {
     const proposal = await this.findById(auth, id);
 
     if (proposal.status !== "DRAFT" && proposal.status !== "REJECTED") {
-      throw new BadRequestException("Apenas propostas em rascunho ou rejeitadas podem ser editadas");
+      throw new BadRequestException(
+        "Apenas propostas em rascunho ou rejeitadas podem ser editadas"
+      );
     }
 
     const data: any = {};
     if (dto.proposedPrice !== undefined) data.proposedPrice = dto.proposedPrice;
     if (dto.downPayment !== undefined) data.downPayment = dto.downPayment;
-    if (dto.counterProposalNotes !== undefined) data.counterProposalNotes = dto.counterProposalNotes;
+    if (dto.counterProposalNotes !== undefined)
+      data.counterProposalNotes = dto.counterProposalNotes;
     if (dto.status !== undefined) data.status = dto.status;
 
     const updated = await this.prisma.proposal.update({
@@ -120,7 +123,9 @@ export class ProposalsService {
     const proposal = await this.findById(auth, id);
 
     if (proposal.status !== "SUBMITTED" && proposal.status !== "COUNTER_PROPOSED") {
-      throw new BadRequestException("Apenas propostas submetidas ou contraproposta podem ser aprovadas");
+      throw new BadRequestException(
+        "Apenas propostas submetidas ou contraproposta podem ser aprovadas"
+      );
     }
 
     const code = `SALE-${Date.now()}`;
@@ -228,7 +233,9 @@ export class ProposalsService {
       installmentsValue: proposal.installmentsValue ? Number(proposal.installmentsValue) : null,
       paymentMethod: proposal.paymentMethod,
       paymentDescription: proposal.paymentDescription,
-      counterProposalPrice: proposal.counterProposalPrice ? Number(proposal.counterProposalPrice) : null,
+      counterProposalPrice: proposal.counterProposalPrice
+        ? Number(proposal.counterProposalPrice)
+        : null,
       counterProposalNotes: proposal.counterProposalNotes,
       status: proposal.status,
       createdAt: proposal.createdAt.toISOString(),

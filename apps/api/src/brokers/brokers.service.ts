@@ -7,7 +7,9 @@ import { PrismaService } from "../database/prisma.service";
 import type { CreateBrokerDto, UpdateBrokerDto } from "./brokers.dto";
 
 const BROKER_INCLUDE = {
-  brokerProfile: { include: { team: { select: { name: true } }, manager: { select: { name: true } } } },
+  brokerProfile: {
+    include: { team: { select: { name: true } }, manager: { select: { name: true } } },
+  },
   _count: { select: { leadsAssigned: true } },
 } as const;
 

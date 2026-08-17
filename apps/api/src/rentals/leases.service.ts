@@ -93,7 +93,8 @@ export class LeasesService {
     if (dto.monthlyRent !== undefined) data.monthlyRent = dto.monthlyRent;
     if (dto.adminFeePercentage !== undefined) data.adminFeePercentage = dto.adminFeePercentage;
     if (dto.status !== undefined) data.status = dto.status;
-    if (dto.nextAdjustmentDate !== undefined) data.nextAdjustmentDate = new Date(dto.nextAdjustmentDate);
+    if (dto.nextAdjustmentDate !== undefined)
+      data.nextAdjustmentDate = new Date(dto.nextAdjustmentDate);
 
     const lease = await this.prisma.lease.update({
       where: { id },

@@ -44,15 +44,11 @@ export class IntegrationsService {
     // Valida credenciais
     const validation = await adapter.validateCredentials();
     if (!validation.isValid) {
-      throw new BadRequestException(
-        `Credential validation failed: ${validation.error}`
-      );
+      throw new BadRequestException(`Credential validation failed: ${validation.error}`);
     }
 
     // Encripta credenciais
-    const encrypted = this.cryptoService.encrypt(
-      JSON.stringify(credentials)
-    );
+    const encrypted = this.cryptoService.encrypt(JSON.stringify(credentials));
     const hash = createHash("sha256").update(encrypted).digest("hex");
 
     // Salva ou atualiza
@@ -109,9 +105,7 @@ export class IntegrationsService {
       throw new NotFoundException("Integration credential not found");
     }
 
-    const decrypted = this.cryptoService.decrypt(
-      cred.credentialEncrypted
-    );
+    const decrypted = this.cryptoService.decrypt(cred.credentialEncrypted);
     return JSON.parse(decrypted);
   }
 
@@ -122,23 +116,13 @@ export class IntegrationsService {
     clientId: string,
     req: DocumentValidationRequest
   ): Promise<DocumentRequestDto> {
-    const creds = await this.getCredential(
-      auth.tenantId,
-      "DOCUMENT_VALIDATION" as any,
-      "fake"
-    );
-    const adapter = this.adapterFactory.createAdapter(
-      "DOCUMENT_VALIDATION" as any,
-      "fake",
-      creds
-    );
+    const creds = await this.getCredential(auth.tenantId, "DOCUMENT_VALIDATION" as any, "fake");
+    const adapter = this.adapterFactory.createAdapter("DOCUMENT_VALIDATION" as any, "fake", creds);
 
     const result = await adapter.validateDocument(req);
 
     // Hash do documento
-    const docHash = createHash("sha256")
-      .update(req.documentNumber)
-      .digest("hex");
+    const docHash = createHash("sha256").update(req.documentNumber).digest("hex");
 
     const docReq = await this.prisma.documentRequest.create({
       data: {
@@ -168,9 +152,7 @@ export class IntegrationsService {
     const ocrResult = await adapter.processOcr(req);
 
     // Hash do documento
-    const docHash = createHash("sha256")
-      .update(req.fileUrl)
-      .digest("hex");
+    const docHash = createHash("sha256").update(req.fileUrl).digest("hex");
 
     const result = await this.prisma.ocrResult.create({
       data: {
@@ -186,10 +168,7 @@ export class IntegrationsService {
     return this.mapOcrResultDto(result);
   }
 
-  async approveOcrResult(
-    auth: AuthContext,
-    ocrResultId: string
-  ): Promise<OcrResultDto> {
+  async approveOcrResult(auth: AuthContext, ocrResultId: string): Promise<OcrResultDto> {
     const result = await this.prisma.ocrResult.update({
       where: { id: ocrResultId },
       data: {
@@ -222,16 +201,9 @@ export class IntegrationsService {
 
   // ---- WhatsApp ----
 
-  async sendWhatsapp(
-    auth: AuthContext,
-    req: WhatsappSendRequest
-  ): Promise<WhatsappMessageDto> {
+  async sendWhatsapp(auth: AuthContext, req: WhatsappSendRequest): Promise<WhatsappMessageDto> {
     const creds = await this.getCredential(auth.tenantId, "WHATSAPP" as any, "fake");
-    const adapter = this.adapterFactory.createAdapter(
-      "WHATSAPP" as any,
-      "fake",
-      creds
-    );
+    const adapter = this.adapterFactory.createAdapter("WHATSAPP" as any, "fake", creds);
 
     const sendResult = await adapter.sendWhatsapp(req);
 
@@ -251,10 +223,7 @@ export class IntegrationsService {
 
   // ---- Payments ----
 
-  async createPayment(
-    auth: AuthContext,
-    req: CreatePaymentRequest
-  ): Promise<PaymentDto> {
+  async createPayment(auth: AuthContext, req: CreatePaymentRequest): Promise<PaymentDto> {
     // Verifica idempotência
     if (req.idempotencyKey) {
       const existing = await this.prisma.payment.findFirst({

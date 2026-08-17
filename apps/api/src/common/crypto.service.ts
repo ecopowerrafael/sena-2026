@@ -26,9 +26,11 @@ export class CryptoService {
     const cipher = createCipheriv(ALGORITHM, this.encryptionKey, iv);
     const encrypted = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
 
-    return [iv.toString("base64"), cipher.getAuthTag().toString("base64"), encrypted.toString("base64")].join(
-      "."
-    );
+    return [
+      iv.toString("base64"),
+      cipher.getAuthTag().toString("base64"),
+      encrypted.toString("base64"),
+    ].join(".");
   }
 
   decrypt(payload: string): string {
@@ -41,7 +43,9 @@ export class CryptoService {
     const decipher = createDecipheriv(ALGORITHM, this.encryptionKey, Buffer.from(iv, "base64"));
     decipher.setAuthTag(Buffer.from(tag, "base64"));
 
-    return Buffer.concat([decipher.update(Buffer.from(data, "base64")), decipher.final()]).toString("utf8");
+    return Buffer.concat([decipher.update(Buffer.from(data, "base64")), decipher.final()]).toString(
+      "utf8"
+    );
   }
 
   /** Determinístico de propósito: é o que permite comparar documentos sem decifrar. */

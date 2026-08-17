@@ -70,10 +70,10 @@ export function mapLeadToUpdatePayload(
   lead: Lead,
   newStatus: string,
   lostReason?: string
-): { status: string; lostReason?: string } {
+): { status: string; reason?: string } {
   return {
     status: mapLeadStatusToBackend(newStatus),
-    ...(lostReason && { lostReason }),
+    ...(lostReason && { reason: lostReason }),
   };
 }
 

@@ -5,6 +5,7 @@ import { useAuth } from "../../features/auth/AuthProvider";
 import { useLeads } from "../../hooks/useLeads";
 import { useBrokers } from "../../hooks/useBrokers";
 import { useLeadOrigins } from "../../hooks/useLeadOrigins";
+import { useLeadCampaigns } from "../../hooks/useLeadCampaigns";
 import { SenaSidebar, SenaTab } from "./SenaSidebar";
 import { SenaHeader } from "./SenaHeader";
 import { DashboardModule } from "./DashboardModule";
@@ -76,13 +77,14 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
 
   // API Hooks for real data
   const { origins } = useLeadOrigins();
+  const { campaigns } = useLeadCampaigns();
   const {
     leads: apiLeads,
     isLoading: leadsLoading,
     error: leadsError,
     addLead: apiAddLead,
     updateLeadStatus: apiUpdateLeadStatus,
-  } = useLeads(origins);
+  } = useLeads(origins, campaigns);
   const {
     brokers: apiBrokers,
     isLoading: brokersLoading,

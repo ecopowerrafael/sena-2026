@@ -9,7 +9,12 @@ interface LeadOrigin {
   name: string;
 }
 
-export function useLeads(origins: LeadOrigin[] = []) {
+interface LeadCampaign {
+  id: string;
+  name: string;
+}
+
+export function useLeads(origins: LeadOrigin[] = [], campaigns: LeadCampaign[] = []) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,22 +49,52 @@ export function useLeads(origins: LeadOrigin[] = []) {
         throw new Error("Nenhuma origem de lead disponível. Configure as origens de lead primeiro.");
       }
 
+      // Find the selected origin by name
+      const selectedOrigin = origins.find((o) => o.name === newLead.origin);
+      if (!selectedOrigin) {
+        throw new Error(`Origem "${newLead.origin}" não encontrada. Selecione uma origem válida.`);
+      }
+
+      // Map client type/role based on frontend lead type
+      const clientTypeRoleMap: Record<string, { type: string; roles: string[] }> = {
+        comprador: { type: "PERSON", roles: ["BUYER"] },
+        proprietario: { type: "PERSON", roles: ["OWNER"] },
+        locador: { type: "PERSON", roles: ["LESSOR"] },
+        locatario: { type: "PERSON", roles: ["TENANT"] },
+        investidor: { type: "PERSON", roles: ["INVESTOR"] },
+      };
+
+      const typeRoleConfig = clientTypeRoleMap[newLead.type || "comprador"] || {
+        type: "PERSON",
+        roles: ["BUYER"],
+      };
+
       // Build inline client object with expected structure
       const client = {
         name: newLead.name || "Novo Cliente",
-        type: "PERSON", // Map from "comprador" to "PERSON"
+        type: typeRoleConfig.type,
         document: newLead.document || "000.000.000-00",
         phone: newLead.phone || "(11) 90000-0000",
         whatsapp: newLead.whatsapp || (newLead.phone || "").replace(/\D/g, ""),
         email: newLead.email || "cliente@email.com",
-        roles: ["BUYER"], // Map from "comprador" to ["BUYER"]
+        roles: typeRoleConfig.roles,
       };
+
+      // Resolve campaign by name if provided
+      let campaignId: string | undefined = undefined;
+      if (newLead.campaign) {
+        const selectedCampaign = campaigns.find((c) => c.name === newLead.campaign);
+        if (!selectedCampaign) {
+          throw new Error(`Campanha "${newLead.campaign}" não encontrada.`);
+        }
+        campaignId = selectedCampaign.id;
+      }
 
       const payload = {
         client,
         assignedBrokerId: newLead.brokerId,
-        originId: origins[0]!.id, // Use first available origin
-        campaignName: newLead.campaign || undefined,
+        originId: selectedOrigin.id,
+        campaignId,
         estimatedBudget: newLead.estimatedBudget || 2000000,
         notes: newLead.notes || "Lead cadastrado manualmente no CRM.",
       };

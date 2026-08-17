@@ -1,7 +1,9 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { pathFromTab, tabFromPath } from "../../routes/senaRoutes";
 import { useAuth } from "../../features/auth/AuthProvider";
+import { useLeads } from "../../hooks/useLeads";
+import { useBrokers } from "../../hooks/useBrokers";
 import { SenaSidebar, SenaTab } from "./SenaSidebar";
 import { SenaHeader } from "./SenaHeader";
 import { DashboardModule } from "./DashboardModule";
@@ -18,9 +20,7 @@ import { ReportsModule } from "./ReportsModule";
 import { PropertyDetailModal } from "./PropertyDetailModal";
 
 import {
-  INITIAL_LEADS,
   INITIAL_PROPERTIES,
-  INITIAL_BROKERS,
   INITIAL_VISITS,
   INITIAL_PROPOSALS,
   INITIAL_SALES,
@@ -73,10 +73,25 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // API Hooks for real data
+  const {
+    leads: apiLeads,
+    isLoading: leadsLoading,
+    error: leadsError,
+    addLead: apiAddLead,
+    updateLeadStatus: apiUpdateLeadStatus,
+  } = useLeads();
+  const {
+    brokers: apiBrokers,
+    isLoading: brokersLoading,
+    error: brokersError,
+    addBroker: apiAddBroker,
+  } = useBrokers();
+
   // Core State
-  const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [properties, setProperties] = useState<Property[]>(INITIAL_PROPERTIES);
-  const [brokers, setBrokers] = useState<Broker[]>(INITIAL_BROKERS);
+  const [brokers, setBrokers] = useState<Broker[]>([]);
   const [visits, setVisits] = useState<Visit[]>(INITIAL_VISITS);
   const [proposals, setProposals] = useState<Proposal[]>(INITIAL_PROPOSALS);
   const [sales, setSales] = useState<SaleClosure[]>(INITIAL_SALES);
@@ -91,53 +106,30 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
   // Modals
   const [selectedPropertyForDetail, setSelectedPropertyForDetail] = useState<Property | null>(null);
 
+  // Sync API data with local state
+  useEffect(() => {
+    setLeads(apiLeads);
+  }, [apiLeads]);
+
+  useEffect(() => {
+    setBrokers(apiBrokers);
+  }, [apiBrokers]);
+
   // Handlers: Leads
-  const handleAddLead = (newLead: Partial<Lead>) => {
-    const fullLead: Lead = {
-      id: `lead-${Date.now()}`,
-      name: newLead.name || "Novo Cliente",
-      phone: newLead.phone || "(11) 99999-0000",
-      whatsapp: newLead.whatsapp || newLead.phone || "(11) 99999-0000",
-      email: newLead.email || "contato@cliente.com",
-      document: newLead.document || "000.000.000-00",
-      type: newLead.type || "comprador",
-      origin: newLead.origin || "Indicação",
-      status: (newLead.status as LeadStatus) || "novo",
-      brokerId: newLead.brokerId || brokers[0]?.id || "brk-1",
-      brokerName: newLead.brokerName || brokers[0]?.name || "Rodrigo Mendonça",
-      estimatedBudget: newLead.estimatedBudget || 2000000,
-      notes: newLead.notes || "Lead adicionado pelo sistema.",
-      createdAt: new Date().toISOString().split("T")[0],
-      lastContact: new Date().toISOString().split("T")[0],
-      interestProfile: newLead.interestProfile || {
-        objective: "compra",
-        propertyTypes: ["Casa Residencial"],
-        preferredNeighborhoods: ["Alphaville"],
-        minPrice: 1500000,
-        maxPrice: 3500000,
-        minBedrooms: 3,
-        minSuites: 2,
-        minParkingSpots: 2,
-        paymentMethod: "Financiamento",
-        needsFinancing: true,
-      },
-    };
-    setLeads([fullLead, ...leads]);
+  const handleAddLead = async (newLead: Partial<Lead>) => {
+    try {
+      await apiAddLead(newLead);
+    } catch (err) {
+      console.error("Failed to add lead:", err);
+    }
   };
 
-  const handleUpdateLeadStatus = (leadId: string, newStatus: LeadStatus, lostReason?: string) => {
-    setLeads((prev) =>
-      prev.map((l) =>
-        l.id === leadId
-          ? {
-              ...l,
-              status: newStatus,
-              lostReason: lostReason || l.lostReason,
-              lastContact: new Date().toISOString().split("T")[0],
-            }
-          : l
-      )
-    );
+  const handleUpdateLeadStatus = async (leadId: string, newStatus: LeadStatus, lostReason?: string) => {
+    try {
+      await apiUpdateLeadStatus(leadId, newStatus, lostReason);
+    } catch (err) {
+      console.error("Failed to update lead status:", err);
+    }
   };
 
   // Handlers: Properties
@@ -358,27 +350,12 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
   };
 
   // Handlers: Brokers
-  const handleAddBroker = (newB: Partial<Broker>) => {
-    const fullBroker: Broker = {
-      id: `brk-${Date.now()}`,
-      name: newB.name || "Corretor",
-      email: newB.email || "corretor@senaimoveis.com.br",
-      phone: newB.phone || "(11) 98888-0000",
-      creci: newB.creci || "CRECI 000.000-F",
-      managerName: "Carlos Eduardo Sena",
-      team: "Equipe Alpha — Alto Padrão",
-      status: "Ativo",
-      leadsCount: 0,
-      salesCount: 0,
-      rentalsCount: 0,
-      vgvTotal: 0,
-      commissionEarned: 0,
-      conversionRate: 0,
-      avatar:
-        newB.avatar ||
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80",
-    };
-    setBrokers([...brokers, fullBroker]);
+  const handleAddBroker = async (newB: Partial<Broker>) => {
+    try {
+      await apiAddBroker(newB);
+    } catch (err) {
+      console.error("Failed to add broker:", err);
+    }
   };
 
   const handleQuickModal = (type: "lead" | "property" | "proposal" | "visit") => {

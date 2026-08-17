@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { ENV } from "../config/config.module";
 import type { Env } from "../config/env";
@@ -7,6 +7,7 @@ import { AuthService } from "./auth.service";
 import { PasswordService } from "./password.service";
 import { SessionService } from "./session.service";
 
+@Global()
 @Module({
   imports: [
     JwtModule.registerAsync({

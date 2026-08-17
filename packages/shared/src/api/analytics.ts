@@ -132,3 +132,35 @@ export interface AlertDto {
   createdAt: string;
   resolvedAt: string | null;
 }
+
+export interface ReportsDto {
+  period: { start: string; end: string };
+  sales: {
+    count: number;
+    vgv: number;
+    averageTicket: number;
+    commissions: number;
+    conversion: number;
+  };
+  properties: {
+    total: number;
+    active: number;
+  };
+  visits: {
+    total: number;
+    completed: number;
+    conversion: number;
+  };
+  rentals: {
+    activeLeases: number;
+    overdueCharges: number;
+    overdueAmount: number;
+  };
+  developments: {
+    developments: number;
+    lotsAvailable: number;
+    lotsReserved: number;
+    lotsSold: number;
+    vgv: number;
+  };
+}

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../database/prisma.service";
 import type { AuthContext } from "../auth/auth.types";
-import type { DashboardMetricsDto, BrokerReportDto, VGVReportDto } from "@sena/shared";
+import type { DashboardMetricsDto, BrokerReportDto, VGVReportDto, ReportsDto } from "@sena/shared";
 
 @Injectable()
 export class AnalyticsService {
@@ -47,6 +47,111 @@ export class AnalyticsService {
       contracts: contractStats,
       arrears: rentChargeStats,
       ranking: { topBrokers: brokerRanking, topOrigins: originRanking },
+    };
+  }
+
+  async getReports(
+    auth: AuthContext,
+    filters?: {
+      startDate?: string;
+      endDate?: string;
+      brokerId?: string;
+      origin?: string;
+      campaign?: string;
+      operation?: string;
+      developmentId?: string;
+    }
+  ): Promise<ReportsDto> {
+    const startDate = filters?.startDate ? new Date(filters.startDate) : new Date(new Date().getFullYear(), 0, 1);
+    const endDate = filters?.endDate ? new Date(filters.endDate) : new Date();
+
+    // Sales com filtros
+    const saleWhere: any = { tenantId: auth.tenantId, saleDate: { gte: startDate, lte: endDate } };
+    if (filters?.brokerId) saleWhere.brokerId = filters.brokerId;
+    if (filters?.origin) {
+      const originRecord = await this.prisma.leadOrigin.findFirst({
+        where: { tenantId: auth.tenantId, name: filters.origin },
+      });
+      if (originRecord) {
+        saleWhere.lead = { originId: originRecord.id };
+      }
+    }
+    if (filters?.campaign) {
+      const campaignRecord = await this.prisma.campaign.findFirst({
+        where: { tenantId: auth.tenantId, name: filters.campaign },
+      });
+      if (campaignRecord) {
+        saleWhere.lead = { campaignId: campaignRecord.id };
+      }
+    }
+
+    const [salesCount, salesAmount, leadsCount, leadsConverted] = await Promise.all([
+      this.prisma.sale.count({ where: saleWhere }),
+      this.prisma.sale.aggregate({ where: saleWhere, _sum: { finalSalePrice: true } }),
+      this.prisma.lead.count({ where: { tenantId: auth.tenantId, createdAt: { gte: startDate, lte: endDate } } }),
+      this.prisma.lead.count({ where: { tenantId: auth.tenantId, status: "NEGOTIATION", createdAt: { gte: startDate, lte: endDate } } }),
+    ]);
+
+    const salesVgv = Number(salesAmount._sum.finalSalePrice || 0);
+    const salesAvgTicket = salesCount > 0 ? salesVgv / salesCount : 0;
+    const salesConversion = leadsCount > 0 ? (leadsConverted / leadsCount) * 100 : 0;
+
+    // Properties
+    const propertyWhere: any = { tenantId: auth.tenantId };
+    if (filters?.brokerId) propertyWhere.brokerCaptatorId = filters.brokerId;
+
+    const [propertiesTotal, propertiesActive] = await Promise.all([
+      this.prisma.property.count({ where: propertyWhere }),
+      this.prisma.property.count({ where: { ...propertyWhere, status: "AVAILABLE" } }),
+    ]);
+
+    // Visits
+    const visitsWhere: any = { tenantId: auth.tenantId, scheduledAt: { gte: startDate, lte: endDate } };
+    if (filters?.brokerId) visitsWhere.brokerId = filters.brokerId;
+
+    const [visitsTotal, visitsCompleted] = await Promise.all([
+      this.prisma.visit.count({ where: visitsWhere }),
+      this.prisma.visit.count({ where: { ...visitsWhere, impression: { not: null } } }),
+    ]);
+
+    const visitsConversion = visitsTotal > 0 ? (visitsCompleted / visitsTotal) * 100 : 0;
+
+    // Rentals
+    const leaseWhere: any = { tenantId: auth.tenantId, status: "ACTIVE" };
+    if (filters?.brokerId) leaseWhere.responsibleBrokerId = filters.brokerId;
+
+    const [leasesActive] = await Promise.all([this.prisma.lease.count({ where: leaseWhere })]);
+
+    const chargesWhere: any = { tenantId: auth.tenantId, status: "OVERDUE" };
+    const [overdueCharges, overdueAmount] = await Promise.all([
+      this.prisma.rentCharge.count({ where: chargesWhere }),
+      this.prisma.rentCharge.aggregate({ where: chargesWhere, _sum: { totalAmount: true } }),
+    ]);
+
+    // Developments
+    const developmentWhere: any = { tenantId: auth.tenantId };
+    if (filters?.developmentId) developmentWhere.id = filters.developmentId;
+
+    const [developmentsCount] = await Promise.all([this.prisma.development.count({ where: developmentWhere })]);
+
+    const lotWhere: any = { tenantId: auth.tenantId };
+    if (filters?.developmentId) lotWhere.developmentId = filters.developmentId;
+
+    const [lotsAvailable, lotsReserved, lotsSold] = await Promise.all([
+      this.prisma.lot.count({ where: { ...lotWhere, status: "AVAILABLE" } }),
+      this.prisma.lot.count({ where: { ...lotWhere, status: "RESERVED" } }),
+      this.prisma.lot.count({ where: { ...lotWhere, status: "SOLD" } }),
+    ]);
+
+    const lotsVgv = lotsAvailable * 380000 + lotsReserved * 380000 + lotsSold * 380000;
+
+    return {
+      period: { start: startDate.toISOString(), end: endDate.toISOString() },
+      sales: { count: salesCount, vgv: salesVgv, averageTicket: salesAvgTicket, commissions: salesVgv * 0.06, conversion: salesConversion },
+      properties: { total: propertiesTotal, active: propertiesActive },
+      visits: { total: visitsTotal, completed: visitsCompleted, conversion: visitsConversion },
+      rentals: { activeLeases: leasesActive, overdueCharges, overdueAmount: Number(overdueAmount._sum.totalAmount || 0) },
+      developments: { developments: developmentsCount, lotsAvailable, lotsReserved, lotsSold, vgv: lotsVgv },
     };
   }
 

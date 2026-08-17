@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { DashboardMetricsDto } from "@sena/shared";
+import type { ReportsDto } from "@sena/shared";
 import { api, ApiRequestError } from "../services/apiClient";
 
 interface ReportFilters {
@@ -13,14 +13,14 @@ interface ReportFilters {
 }
 
 interface UseReportsReturn {
-  metrics: DashboardMetricsDto | null;
+  reports: ReportsDto | null;
   loading: boolean;
   error: string | null;
   loadReports: (filters?: ReportFilters) => Promise<void>;
 }
 
 export function useReports(): UseReportsReturn {
-  const [metrics, setMetrics] = useState<DashboardMetricsDto | null>(null);
+  const [reports, setReports] = useState<ReportsDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,10 +37,10 @@ export function useReports(): UseReportsReturn {
       if (filters?.operation) params.append("operation", filters.operation);
       if (filters?.developmentId) params.append("developmentId", filters.developmentId);
 
-      const response = await api.get<{ data: DashboardMetricsDto }>(
+      const response = await api.get<{ data: ReportsDto }>(
         `/analytics/reports${params.toString() ? `?${params.toString()}` : ""}`
       );
-      setMetrics(response.data || null);
+      setReports(response.data || null);
     } catch (err) {
       if (err instanceof ApiRequestError) {
         setError(err.message);
@@ -56,5 +56,5 @@ export function useReports(): UseReportsReturn {
     loadReports();
   }, []);
 
-  return { metrics, loading, error, loadReports };
+  return { reports, loading, error, loadReports };
 }

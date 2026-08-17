@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import type { DashboardMetricsDto } from "@sena/shared";
+import type { DashboardMetricsDto, ReportsDto } from "@sena/shared";
 import type { AuthContext } from "../auth/auth.types";
 import { CurrentUser, Roles } from "../auth/decorators";
 import { AnalyticsService } from "./analytics.service";
@@ -33,7 +33,15 @@ export class AnalyticsController {
     @Query("campaign") campaign?: string,
     @Query("operation") operation?: string,
     @Query("developmentId") developmentId?: string,
-  ): Promise<DashboardMetricsDto> {
-    return this.analytics.getDashboardMetrics(auth);
+  ): Promise<ReportsDto> {
+    return this.analytics.getReports(auth, {
+      startDate,
+      endDate,
+      brokerId,
+      origin,
+      campaign,
+      operation,
+      developmentId,
+    });
   }
 }

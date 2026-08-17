@@ -1,36 +1,70 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
 **Última atualização:** 17/08/2026  
-**Fase atual:** Etapa 11-C concluída — Visits + Proposals/Sales + Commissions real  
-**Estado geral:** ETAPAS 0–11-C CONCLUÍDAS E VALIDADAS
+**Fase atual:** Etapa 11-C implementada — Visits + Proposals/Sales + Commissions real  
+**Estado geral:** ETAPAS 0–11-B CONCLUÍDAS E VALIDADAS; ETAPA 11-C IMPLEMENTADA (validação pendente)
 
 ---
 
-## Etapa 11-C — CONCLUÍDO E VALIDADO
+## Etapa 11-C — IMPLEMENTADA (Validação funcional pendente)
 
-Visits API/UI/F5: OK  
-Proposals create/list/F5: OK  
-Counter proposals PATCH: OK  
-Sale approval atomic flow: OK  
-SaleSeller real owners (N:N): OK  
-Commission 6% + 40/10/25/25 splits: OK  
-ProposalsSalesModule integration: OK  
-CommissionsModule real splits: OK  
-Mock handlers removed: OK  
-Rollback atomicity test: OK  
-Commission structure test: OK  
-PropertyOwner usage test: OK  
-Typecheck API: OK  
-Typecheck Web: OK  
-Build Web: OK  
+### ✅ IMPLEMENTAÇÃO CONFIRMADA
 
-**Validação de Atomicity:**
-- ✓ $transaction wraps Sale + SaleSeller[] + Commission creation
-- ✓ SaleSeller created from PropertyOwner[] (buyer excluded)
-- ✓ Commission 6% with splits: 40% AGENCY, 10% MANAGER, 25% CAPTATOR, 25% ATTENDANT_BROKER
-- ✓ All operations in single transaction (rollback guaranteed)
+**Visitas:**
+- ✓ Hook useVisits criado (GET/POST/PATCH /visits)
+- ✓ VisitsModule reescrito com forms reais
+- ✓ API real integrada (scheduledAt ISO, feedback, impression)
 
-**Último commit funcional:** b50bf61
+**Propostas/Vendas:**
+- ✓ Hook useProposals criado com approve() e update()
+- ✓ Hook useSales criado (read-only, gerenciado por approve)
+- ✓ ProposalsSalesModule reescrito (create/counter/approve flows)
+- ✓ Approval flow POST /proposals/:id/approve integrado
+
+**Comissões:**
+- ✓ Hook useCommissions criado (GET /commissions, GET /commissions/by-sale/:id)
+- ✓ CommissionsModule real splits display
+- ✓ Splits dinâmicos renderizados do backend (não hardcoded)
+
+**Transação Atômica (proposals.service.ts:149):**
+- ✓ $transaction wraps proposal.update → sale.create → property.update → commission.create → auditLog.create
+- ✓ SaleSeller criado de PropertyOwner[] (proprietários reais, não comprador)
+- ✓ Commission 6% base com splits: 40% AGENCY, 10% MANAGER, 25% CAPTATOR, 25% ATTENDANT_BROKER
+- ✓ Rollback garantido se qualquer operação falhar
+
+**Código Limpo:**
+- ✓ Mock handlers removidos de SenaCrmApp
+- ✓ Mock data initialization removido de VisitsModule, ProposalsSalesModule
+- ✓ CommissionsModule remove simulador local; usa backend splits
+
+**Build & Type:**
+- ✓ Typecheck API: 0 erros
+- ✓ Typecheck Web: 0 erros
+- ✓ Build Web: 231.62 kB gzip
+
+### ⏳ PENDENTE PARA E11-E/HOMOLOGAÇÃO
+
+- Teste de F5: Visitas (create → F5 → feedback → F5)
+- Teste de F5: Propostas (create → F5 → verificar persistência)
+- Teste de F5: Counter-proposal (PATCH → F5)
+- Teste de F5: Aprovação e Comissão (POST approve → F5 → verificar sale + commission)
+- Teste de rollback com falha de commission.create no banco real
+- Validação de atomicity com database real
+
+### 🔴 BLOCKER DOCUMENTADO
+
+Ambiente de preview iniciou projeto **plataforma-servicos (Agendei)** em lugar de **Sena 2026**:
+- preview_start("api") conectou em launch.json errado
+- Execução manual npm run dev:api compilou (0 erros NestJS) mas API não abriu listener
+- Diagnóstico: Provável falta de conexão DB/.env/NODE_ENV no contexto manual
+- Impacto: F5 testing via browser impedido
+
+**Como resolver (E11-E):**
+- Usar Docker/container para ambiente isolado, ou
+- Executar via CI/CD pipeline (GitHub Actions) para ambiente limpo, ou
+- Debugar .env/database connection no contexto manual
+
+**Resultado:** Implementação de código 100% concluída; validação funcional adiada até E11-E.
 
 ---
 

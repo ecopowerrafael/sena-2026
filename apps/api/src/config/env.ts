@@ -33,6 +33,9 @@ const envSchema = z.object({
   SEED_ADMIN_EMAIL: z.string().email().optional(),
   SEED_ADMIN_PASSWORD: z.string().min(10).optional(),
   SEED_ADMIN_NAME: z.string().optional(),
+
+  // IA (ARCHITECTURE.md §23)
+  AI_CLAUDE_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

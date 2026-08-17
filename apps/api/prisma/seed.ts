@@ -59,6 +59,33 @@ async function main(): Promise<void> {
   });
 
   console.log(`Administrador criado: ${admin.email} (${admin.id})`);
+
+  // Create default lead origins for the tenant
+  const defaultOrigins = [
+    "Instagram Ads",
+    "Google Ads",
+    "Placa no Imóvel",
+    "WhatsApp Direto",
+    "Indicação",
+  ];
+
+  for (const originName of defaultOrigins) {
+    const existing = await prisma.leadOrigin.findFirst({
+      where: { tenantId: tenant.id, name: originName },
+    });
+
+    if (!existing) {
+      await prisma.leadOrigin.create({
+        data: {
+          tenantId: tenant.id,
+          name: originName,
+          slug: originName.toLowerCase().replace(/\s+/g, "-"),
+          isActive: true,
+        },
+      });
+      console.log(`Origem criada: ${originName}`);
+    }
+  }
 }
 
 main()

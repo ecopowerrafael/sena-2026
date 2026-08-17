@@ -4,7 +4,12 @@ import type { Lead, LeadStatus } from "../types/senaCrm";
 import { mapLeadDtoToLead, mapLeadToUpdatePayload } from "../mappers/senaMappers";
 import type { LeadDto } from "@sena/shared";
 
-export function useLeads() {
+interface LeadOrigin {
+  id: string;
+  name: string;
+}
+
+export function useLeads(origins: LeadOrigin[] = []) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,16 +40,26 @@ export function useLeads() {
 
   const addLead = async (newLead: Partial<Lead>) => {
     try {
+      if (origins.length === 0) {
+        throw new Error("Nenhuma origem de lead disponível. Configure as origens de lead primeiro.");
+      }
+
+      // Build inline client object with expected structure
+      const client = {
+        name: newLead.name || "Novo Cliente",
+        type: "PERSON", // Map from "comprador" to "PERSON"
+        document: newLead.document || "000.000.000-00",
+        phone: newLead.phone || "(11) 90000-0000",
+        whatsapp: newLead.whatsapp || (newLead.phone || "").replace(/\D/g, ""),
+        email: newLead.email || "cliente@email.com",
+        roles: ["BUYER"], // Map from "comprador" to ["BUYER"]
+      };
+
       const payload = {
-        clientName: newLead.name || "Novo Cliente",
-        clientPhone: newLead.phone || "(11) 90000-0000",
-        clientWhatsapp: newLead.whatsapp || (newLead.phone || "").replace(/\D/g, ""),
-        clientEmail: newLead.email || "cliente@email.com",
-        clientType: newLead.type || "comprador",
-        clientDocument: newLead.document || "000.000.000-00",
-        assignedBrokerId: newLead.brokerId || "",
-        originId: "", // Will use first origin if not provided
-        status: "NEW",
+        client,
+        assignedBrokerId: newLead.brokerId,
+        originId: origins[0]!.id, // Use first available origin
+        campaignName: newLead.campaign || undefined,
         estimatedBudget: newLead.estimatedBudget || 2000000,
         notes: newLead.notes || "Lead cadastrado manualmente no CRM.",
       };

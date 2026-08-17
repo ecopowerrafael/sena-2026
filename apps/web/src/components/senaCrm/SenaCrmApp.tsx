@@ -4,6 +4,7 @@ import { pathFromTab, tabFromPath } from "../../routes/senaRoutes";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { useLeads } from "../../hooks/useLeads";
 import { useBrokers } from "../../hooks/useBrokers";
+import { useLeadOrigins } from "../../hooks/useLeadOrigins";
 import { SenaSidebar, SenaTab } from "./SenaSidebar";
 import { SenaHeader } from "./SenaHeader";
 import { DashboardModule } from "./DashboardModule";
@@ -74,13 +75,14 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
   // API Hooks for real data
+  const { origins } = useLeadOrigins();
   const {
     leads: apiLeads,
     isLoading: leadsLoading,
     error: leadsError,
     addLead: apiAddLead,
     updateLeadStatus: apiUpdateLeadStatus,
-  } = useLeads();
+  } = useLeads(origins);
   const {
     brokers: apiBrokers,
     isLoading: brokersLoading,

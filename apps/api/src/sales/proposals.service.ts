@@ -128,18 +128,32 @@ export class ProposalsService {
       );
     }
 
+    // Fetch property owners (REAL sellers)
+    const propertyOwners = await this.prisma.propertyOwner.findMany({
+      where: {
+        propertyId: proposal.propertyId,
+        tenantId: auth.tenantId,
+      },
+    });
+
+    if (propertyOwners.length === 0) {
+      throw new BadRequestException(
+        "Imóvel não possui proprietários cadastrados"
+      );
+    }
+
     const code = `SALE-${Date.now()}`;
-    const commissionPercent = 5;
+    const commissionPercent = 6; // Official rate
     const commissionValue = dto.finalSalePrice * (commissionPercent / 100);
 
     const sale = await this.prisma.$transaction(async (tx) => {
-      // Atualizar proposta para APPROVED
+      // Update proposal to APPROVED
       await tx.proposal.update({
         where: { id },
         data: { status: "APPROVED" },
       });
 
-      // Criar venda
+      // Create sale with real sellers (property owners, not buyer)
       const newSale = await tx.sale.create({
         data: {
           tenantId: auth.tenantId,
@@ -155,12 +169,11 @@ export class ProposalsService {
           documentationStatus: "IN_INVENTORY",
           status: "PENDING",
           sellers: {
-            create: [
-              {
-                tenantId: auth.tenantId,
-                clientId: proposal.clientId,
-              },
-            ],
+            create: propertyOwners.map((owner) => ({
+              tenantId: auth.tenantId,
+              clientId: owner.clientId,
+              percentage: owner.ownershipPercentage,
+            })),
           },
         },
         include: {
@@ -170,13 +183,14 @@ export class ProposalsService {
         },
       });
 
-      // Atualizar status do imóvel
+      // Update property status to SOLD
       await tx.property.update({
         where: { id: proposal.propertyId },
         data: { status: "SOLD" },
       });
 
-      // Criar comissão (5% default)
+      // Create commission (6% official rate with standard splits)
+      // Splits: 40% AGENCY, 10% MANAGER, 25% CAPTATOR, 25% ATTENDANCE
       await tx.commission.create({
         data: {
           tenantId: auth.tenantId,
@@ -192,8 +206,32 @@ export class ProposalsService {
                 tenantId: auth.tenantId,
                 recipientType: "AGENCY",
                 recipientId: auth.userId,
-                percentage: 100,
-                amount: commissionValue,
+                percentage: 40,
+                amount: commissionValue * 0.4,
+                status: "PENDING",
+              },
+              {
+                tenantId: auth.tenantId,
+                recipientType: "MANAGER",
+                recipientId: auth.userId,
+                percentage: 10,
+                amount: commissionValue * 0.1,
+                status: "PENDING",
+              },
+              {
+                tenantId: auth.tenantId,
+                recipientType: "CAPTATOR",
+                recipientId: auth.userId,
+                percentage: 25,
+                amount: commissionValue * 0.25,
+                status: "PENDING",
+              },
+              {
+                tenantId: auth.tenantId,
+                recipientType: "ATTENDANCE",
+                recipientId: auth.userId,
+                percentage: 25,
+                amount: commissionValue * 0.25,
                 status: "PENDING",
               },
             ],
@@ -201,7 +239,7 @@ export class ProposalsService {
         },
       });
 
-      // Registrar auditoria
+      // Audit log
       await tx.auditLog.create({
         data: {
           tenantId: auth.tenantId,
@@ -209,7 +247,12 @@ export class ProposalsService {
           action: "SALE_CREATED",
           entity: "Sale",
           entityId: newSale.id,
-          metadata: { code, finalSalePrice: dto.finalSalePrice },
+          metadata: {
+            code,
+            finalSalePrice: dto.finalSalePrice,
+            sellers: propertyOwners.length,
+            commission: commissionPercent,
+          },
         },
       });
 

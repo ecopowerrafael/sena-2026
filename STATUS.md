@@ -17,11 +17,20 @@ Commission 6% + 40/10/25/25 splits: OK
 ProposalsSalesModule integration: OK  
 CommissionsModule real splits: OK  
 Mock handlers removed: OK  
+Rollback atomicity test: OK  
+Commission structure test: OK  
+PropertyOwner usage test: OK  
 Typecheck API: OK  
 Typecheck Web: OK  
 Build Web: OK  
 
-**Último commit funcional:** 91f49b0
+**Validação de Atomicity:**
+- ✓ $transaction wraps Sale + SaleSeller[] + Commission creation
+- ✓ SaleSeller created from PropertyOwner[] (buyer excluded)
+- ✓ Commission 6% with splits: 40% AGENCY, 10% MANAGER, 25% CAPTATOR, 25% ATTENDANT_BROKER
+- ✓ All operations in single transaction (rollback guaranteed)
+
+**Último commit funcional:** b50bf61
 
 ---
 

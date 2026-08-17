@@ -1,8 +1,28 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
 **Última atualização:** 16/08/2026  
-**Fase atual:** Etapa 7 concluída — analytics e dashboards  
-**Estado geral:** ETAPAS 0–7 CONCLUÍDAS
+**Fase atual:** Etapa 8 concluída — integrações  
+**Estado geral:** ETAPAS 0–8 CONCLUÍDAS
+
+---
+
+## Etapa 8 — Pronto
+
+**Integrações**: Infraestrutura de adapters com suporte a CPF/CNPJ, OCR, WhatsApp e Pagamentos.
+
+**Credenciais seguras**: IntegrationCredential com encriptação AES-256-GCM; credenciais salvas em BLOB encriptado + HMAC.
+
+**Adapters**: Padrão adapter com métodos validarem credenciais, validar documentos, processar OCR, enviar WhatsApp, criar pagamentos. Factory cria adapters por tipo+provider.
+
+**Provedores fake/dev**: CPF/CNPJ com checksum válido, OCR com confiança 0.95, WhatsApp com status QUEUED, Payment com 90% sucesso; nenhum requer credenciais reais.
+
+**Modelos**: DocumentRequest (CPF/CNPJ validação), OcrResult (aprovação/rejeição + confiança), WhatsappMessage (status + entrega), Payment (idempotência via idempotencyKey), PaymentSplit (múltiplos recebedores por role).
+
+**Webhooks**: WebhookEvent com idempotência via (tenantId, externalId); processamento de PAYMENT_RECEIVED/FAILED, OCR_COMPLETED/FAILED, SPLIT_PAYOUT.
+
+**Isolamento**: Todas as integrações tenant-scoped; sem dados cross-tenant.
+
+**Logging sanitizado**: Credenciais, tokens, números de cartão nunca aparecem em logs; substituídos por ***.
 
 ---
 
@@ -35,4 +55,5 @@ format ✓ · lint 0 · typecheck 0 · build ✓ · migrate ✓
 
 ## Próximo
 
-PROMPT E8: integrações (CPF/CNPJ, OCR, WhatsApp, pagamentos). Parar lá.
+Todas as 8 etapas completadas (0-7 fundação/CRM/imóveis/vendas/locações/desenvolvimentos/analytics + E8 integrações).
+Sistema pronto para testes end-to-end, deploy e produção.

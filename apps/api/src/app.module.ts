@@ -20,6 +20,7 @@ import { SalesModule } from "./sales/sales.module";
 import { RentalsModule } from "./rentals/rentals.module";
 import { DevelopmentsModule } from "./developments/developments.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
+import { IntegrationsModule } from "./integrations/integrations.module";
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { AnalyticsModule } from "./analytics/analytics.module";
     RentalsModule,
     DevelopmentsModule,
     AnalyticsModule,
+    IntegrationsModule,
   ],
   providers: [
     // Ordem importa: rate limit → sessão → CSRF → papel.

@@ -27,3 +27,5 @@ export const CurrentUser = createParamDecorator(
     return request.auth;
   }
 );
+
+export const Auth = CurrentUser;

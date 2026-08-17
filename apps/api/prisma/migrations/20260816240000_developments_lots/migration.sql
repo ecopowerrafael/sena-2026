@@ -1,5 +1,3 @@
-Loaded Prisma config from prisma.config.ts.
-
 -- CreateTable
 CREATE TABLE `developments` (
     `id` VARCHAR(191) NOT NULL,

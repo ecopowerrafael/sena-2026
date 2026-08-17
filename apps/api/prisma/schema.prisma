@@ -103,6 +103,14 @@ model Tenant {
   lotProposalHistory  LotProposalHistory[]
   lotSales            LotSale[]
 
+  integrationCredentials IntegrationCredential[]
+  payments               Payment[]
+  paymentSplits          PaymentSplit[]
+  webhookEvents          WebhookEvent[]
+  documentRequests       DocumentRequest[]
+  ocrResults             OcrResult[]
+  whatsappMessages       WhatsappMessage[]
+
   @@index([status])
   @@map("tenants")
 }
@@ -151,6 +159,10 @@ model User {
   lotSimulations      LotSimulation[]
   lotProposals        LotProposal[]
   lotSales            LotSale[]
+
+  documentRequestsAudited DocumentRequest[] @relation("DocumentAuditedBy")
+  ocrResultsReviewed      OcrResult[] @relation("OcrReviewedBy")
+  paymentSplits           PaymentSplit[]
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -349,6 +361,10 @@ model Client {
 
   propertyOwnerships PropertyOwner[]
   interestProfile    InterestProfile?
+
+  documentRequests DocumentRequest[]
+  ocrResults       OcrResult[]
+
   @@index([tenantId, responsibleBrokerId])
   @@map("clients")
 }
@@ -1249,6 +1265,206 @@ model MaintenanceEvent {
   @@index([requestId])
   @@index([providerId])
   @@map("maintenance_events")
+}
+
+// ---------------------------------------------------------------------------
+// Etapa 8 — integrações: credenciais, webhooks, pagamentos
+// ---------------------------------------------------------------------------
+
+enum IntegrationType {
+  DOCUMENT_VALIDATION
+  OCR
+  WHATSAPP
+  PAYMENT
+  SPLIT
+}
+
+enum WebhookEventType {
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  OCR_COMPLETED
+  OCR_FAILED
+  SPLIT_PAYOUT
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum SplitRecipientRole {
+  AGENCY
+  MANAGER
+  CAPTATOR
+  BROKER
+  PARTNER
+}
+
+/// Credenciais seguras de integração terceira (criptografadas).
+model IntegrationCredential {
+  id                String           @id @default(cuid())
+  tenantId          String
+  type              IntegrationType
+  providerName      String           @db.VarChar(64)
+  credentialEncrypted String         @db.Text
+  credentialHash    String           @db.VarChar(64)
+  isActive          Boolean          @default(true)
+  lastValidated     DateTime?
+  validationError   String?          @db.Text
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, type, providerName])
+  @@index([tenantId, type, isActive])
+  @@map("integration_credentials")
+}
+
+/// Pagamento (cartão, transferência, etc).
+model Payment {
+  id                String         @id @default(cuid())
+  tenantId          String
+  externalId        String?        @db.VarChar(128)
+  amount            Decimal        @db.Decimal(15, 2)
+  currency          String         @db.VarChar(3)
+  status            PaymentStatus  @default(PENDING)
+  paymentMethod     String         @db.VarChar(64)
+  cardLast4         String?        @db.VarChar(4)
+  cardBrand         String?        @db.VarChar(32)
+  authorizedAt      DateTime?
+  capturedAt        DateTime?
+  failedAt          DateTime?
+  failureReason     String?        @db.Text
+  idempotencyKey    String?        @db.VarChar(128)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id])
+  splits  PaymentSplit[]
+  webhooks WebhookEvent[]
+
+  @@unique([externalId])
+  @@unique([idempotencyKey])
+  @@index([tenantId, status])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+/// Split de pagamento (múltiplos recebedores).
+model PaymentSplit {
+  id                String               @id @default(cuid())
+  tenantId          String
+  paymentId         String
+  recipientRole     SplitRecipientRole
+  recipientUserId   String?
+  amount            Decimal              @db.Decimal(15, 2)
+  percentage        Decimal              @db.Decimal(6, 2)
+  status            String               @db.VarChar(64)
+  paidAt            DateTime?
+  createdAt         DateTime             @default(now())
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  recipient User? @relation(fields: [recipientUserId], references: [id])
+
+  @@index([paymentId])
+  @@index([tenantId])
+  @@map("payment_splits")
+}
+
+/// Evento de webhook (idempotência via externalId).
+model WebhookEvent {
+  id            String           @id @default(cuid())
+  tenantId      String
+  type          WebhookEventType
+  paymentId     String?
+  externalId    String           @db.VarChar(256)
+  payload       Json
+  processed     Boolean          @default(false)
+  processedAt   DateTime?
+  processError  String?          @db.Text
+  createdAt     DateTime         @default(now())
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, externalId])
+  @@index([tenantId, processed])
+  @@map("webhook_events")
+}
+
+/// Requisição de documento (CPF/CNPJ validation).
+model DocumentRequest {
+  id              String   @id @default(cuid())
+  tenantId        String
+  clientId        String
+  documentType    String   @db.VarChar(32)
+  documentHash    String   @db.VarChar(64)
+  resultStatus    String?  @db.VarChar(64)
+  resultData      Json?
+  validatedAt     DateTime?
+  auditedByUserId String?
+  auditedAt       DateTime?
+  createdAt       DateTime @default(now())
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+  client      Client @relation(fields: [clientId], references: [id])
+  auditedBy   User?  @relation("DocumentAuditedBy", fields: [auditedByUserId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([clientId])
+  @@map("document_requests")
+}
+
+/// OCR resultado estruturado.
+model OcrResult {
+  id              String   @id @default(cuid())
+  tenantId        String
+  clientId        String?
+  documentHash    String   @db.VarChar(64)
+  extractedText   String   @db.Text
+  extractedData   Json
+  confidence      Decimal? @db.Decimal(3, 2)
+  reviewedByUserId String?
+  reviewedAt      DateTime?
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  tenant     Tenant @relation(fields: [tenantId], references: [id])
+  client     Client? @relation(fields: [clientId], references: [id])
+  reviewedBy User?  @relation("OcrReviewedBy", fields: [reviewedByUserId], references: [id])
+
+  @@index([tenantId, approvedAt])
+  @@index([clientId])
+  @@map("ocr_results")
+}
+
+/// Mensagem WhatsApp (histórico e delivery).
+model WhatsappMessage {
+  id              String   @id @default(cuid())
+  tenantId        String
+  recipientPhone  String   @db.VarChar(32)
+  messageBody     String   @db.Text
+  templateName    String?  @db.VarChar(128)
+  externalId      String?  @db.VarChar(128)
+  status          String   @db.VarChar(32)
+  deliveredAt     DateTime?
+  readAt          DateTime?
+  failureReason   String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([recipientPhone])
+  @@map("whatsapp_messages")
 }
 
 // ---------------------------------------------------------------------------

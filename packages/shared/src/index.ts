@@ -7,5 +7,6 @@ export * from "./api/sales";
 export * from "./api/rentals";
 export * from "./api/developments";
 export * from "./api/analytics";
+export * from "./api/integrations";
 export * from "./enums/crm";
 export * from "./enums/roles";

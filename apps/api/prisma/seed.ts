@@ -34,12 +34,6 @@ async function main(): Promise<void> {
   }
 
   const email = env.SEED_ADMIN_EMAIL.trim().toLowerCase();
-  const existing = await prisma.user.findFirst({ where: { tenantId: tenant.id, email } });
-
-  if (existing) {
-    console.log(`Administrador já existe: ${email}`);
-    return;
-  }
 
   const passwordHash = await hash(env.SEED_ADMIN_PASSWORD, {
     algorithm: Algorithm.Argon2id,
@@ -48,17 +42,26 @@ async function main(): Promise<void> {
     parallelism: 1,
   });
 
-  const admin = await prisma.user.create({
-    data: {
+  const admin = await prisma.user.upsert({
+    where: { tenantId_email: { email, tenantId: tenant.id } },
+    update: {
+      passwordHash,
+      role: "ADMIN",
+      status: "ACTIVE",
+      deletedAt: null,
+      ...(env.SEED_ADMIN_NAME && { name: env.SEED_ADMIN_NAME }),
+    },
+    create: {
       tenantId: tenant.id,
       name: env.SEED_ADMIN_NAME ?? "Administrador SENA",
       email,
       passwordHash,
       role: "ADMIN",
+      status: "ACTIVE",
     },
   });
 
-  console.log(`Administrador criado: ${admin.email} (${admin.id})`);
+  console.log(`Administrador garantido: ${admin.email} (${admin.id})`);
 
   // Create default lead origins for the tenant
   const defaultOrigins = [

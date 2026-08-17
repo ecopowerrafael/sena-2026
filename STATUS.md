@@ -1,8 +1,37 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
 **Última atualização:** 16/08/2026  
-**Fase atual:** Etapa 8 concluída — integrações  
-**Estado geral:** ETAPAS 0–8 CONCLUÍDAS
+**Fase atual:** Etapa 9 concluída — IA especialista  
+**Estado geral:** ETAPAS 0–9 CONCLUÍDAS
+
+---
+
+## Etapa 9 — Pronto
+
+**IA especialista**: AiProvider abstraction com implementação Claude (OpenAI-compatível) e 8 ferramentas read-only + 1 assistiva.
+
+**Provider abstraction**: Interface genérica `generate()` para pluggable LLMs; ClaudeProvider implementa @anthropic-ai/sdk.
+
+**Ferramentas read-only** (sem SQL arbitrário):
+- searchClients: nome/telefone/email
+- searchProperties: filtro tipo/status/preço
+- findMatchingProperties: compatibilidade cliente
+- getBrokerPerformance: vendas/comissões
+- getCommissionSummary: breakdown de comissão
+- getOverdueRentals: aluguéis vencidos
+- getExpiringLeases: contratos próximos de vencer (30 dias)
+- getAvailableLots: lotes disponíveis
+
+**Ferramenta assistiva** (requer aprovação):
+- createFollowUpDraft: geração de rascunho (SMS/email)
+
+**Segurança**: tenant obrigatório, sem SQL gerado, apenas ferramentas explícitas, validação de permissão no backend, logging sanitizado.
+
+**Consumo rastreado**: inputTokens, outputTokens, cost calculation por ferramenta.
+
+**Conversa persistida**: AiConversation + AiMessage com histórico completo; AiConsumption para billing.
+
+**Isolamento**: todas as ferramentas filtram por tenantId; sem dados cross-tenant.
 
 ---
 
@@ -55,5 +84,5 @@ format ✓ · lint 0 · typecheck 0 · build ✓ · migrate ✓
 
 ## Próximo
 
-Todas as 8 etapas completadas (0-7 fundação/CRM/imóveis/vendas/locações/desenvolvimentos/analytics + E8 integrações).
-Sistema pronto para testes end-to-end, deploy e produção.
+Todas as 9 etapas completadas (0-7 fundação/CRM/imóveis/vendas/locações/desenvolvimentos/analytics + E8 integrações + E9 IA).
+Sistema pronto para E10: hardening, segurança transversal, deploy.

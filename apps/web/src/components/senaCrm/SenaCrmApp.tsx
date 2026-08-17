@@ -206,35 +206,7 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
   };
 
   // Handlers: Visits
-  const handleAddVisit = (newVisit: Partial<Visit>) => {
-    const fullVisit: Visit = {
-      id: `v-${Date.now()}`,
-      clientName: newVisit.clientName || "Cliente",
-      clientPhone: newVisit.clientPhone || "(11) 99999-9999",
-      propertyCode: newVisit.propertyCode || "SENA-801",
-      propertyTitle: newVisit.propertyTitle || "Imóvel",
-      propertyAddress: newVisit.propertyAddress || "Endereço",
-      brokerName: newVisit.brokerName || "Rodrigo Mendonça",
-      date: newVisit.date || "2026-08-16",
-      time: newVisit.time || "14:00",
-      status: newVisit.status || "Agendada",
-      feedback: newVisit.feedback || "",
-    };
-    setVisits([fullVisit, ...visits]);
-  };
-
-  const handleUpdateVisitFeedback = (
-    visitId: string,
-    feedback: string,
-    impression: any,
-    status: any
-  ) => {
-    setVisits((prev) =>
-      prev.map((v) =>
-        v.id === visitId ? { ...v, feedback, clientImpression: impression, status } : v
-      )
-    );
-  };
+  // Visits handled by useVisits hook
 
   // Handlers: Proposals & Sales
   const handleAddProposal = (newProp: Partial<Proposal>) => {
@@ -471,12 +443,7 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
 
           {currentTab === "visitas" && (
             <VisitsModule
-              visits={visits}
               properties={properties}
-              brokers={brokers}
-              leads={leads}
-              onAddVisit={handleAddVisit}
-              onUpdateVisitFeedback={handleUpdateVisitFeedback}
             />
           )}
 

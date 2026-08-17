@@ -21,11 +21,23 @@ import {
 } from "lucide-react";
 import { Lead, LeadStatus, LeadOrigin, ClientType, Broker, Property } from "../../types/senaCrm";
 
+interface LeadOriginOption {
+  id: string;
+  name: string;
+}
+
+interface LeadCampaignOption {
+  id: string;
+  name: string;
+}
+
 interface LeadsFunnelModuleProps {
   leads: Lead[];
   brokers: Broker[];
   properties: Property[];
-  onAddLead: (newLead: Partial<Lead>) => void;
+  origins?: LeadOriginOption[];
+  campaigns?: LeadCampaignOption[];
+  onAddLead: (newLead: Partial<Lead>) => Promise<void>;
   onUpdateLeadStatus: (leadId: string, newStatus: LeadStatus, lostReason?: string) => void;
   onSelectLead: (lead: Lead) => void;
 }
@@ -61,6 +73,8 @@ export const LeadsFunnelModule: React.FC<LeadsFunnelModuleProps> = ({
   leads,
   brokers,
   properties,
+  origins = [],
+  campaigns = [],
   onAddLead,
   onUpdateLeadStatus,
   onSelectLead,
@@ -74,6 +88,10 @@ export const LeadsFunnelModule: React.FC<LeadsFunnelModuleProps> = ({
   const [leadToLose, setLeadToLose] = useState<Lead | null>(null);
   const [lostReason, setLostReason] = useState("");
   const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
+
+  // Form state
+  const [isCreatingLead, setIsCreatingLead] = useState(false);
+  const [createLeadError, setCreateLeadError] = useState<string | null>(null);
 
   // New Lead Form State
   const [newLeadName, setNewLeadName] = useState("");
@@ -109,38 +127,48 @@ export const LeadsFunnelModule: React.FC<LeadsFunnelModuleProps> = ({
     }).format(val);
   };
 
-  const handleCreateLead = (e: React.FormEvent) => {
+  const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLeadName) return;
 
-    const selectedBroker = brokers.find((b) => b.id === newLeadBrokerId);
+    setIsCreatingLead(true);
+    setCreateLeadError(null);
 
-    onAddLead({
-      name: newLeadName,
-      document: newLeadDoc || "000.000.000-00",
-      phone: newLeadPhone || "(11) 90000-0000",
-      whatsapp: newLeadPhone.replace(/\D/g, "") || "5511900000000",
-      email: newLeadEmail || "cliente@email.com",
-      type: newLeadType,
-      brokerId: newLeadBrokerId,
-      brokerName: selectedBroker?.name || "Corretor Geral",
-      origin: newLeadOrigin,
-      campaign: newLeadCampaign || "Orgânico / Direto",
-      status: "novo",
-      createdAt: new Date().toISOString().split("T")[0],
-      lastContact: new Date().toISOString().split("T")[0],
-      nextContact: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-      estimatedBudget: Number(newLeadBudget),
-      notes: newLeadNotes || "Lead cadastrado manualmente no CRM.",
-    });
+    try {
+      const selectedBroker = brokers.find((b) => b.id === newLeadBrokerId);
 
-    setIsNewLeadModalOpen(false);
-    // Reset form
-    setNewLeadName("");
-    setNewLeadDoc("");
-    setNewLeadPhone("");
-    setNewLeadEmail("");
-    setNewLeadNotes("");
+      await onAddLead({
+        name: newLeadName,
+        document: newLeadDoc || "000.000.000-00",
+        phone: newLeadPhone || "(11) 90000-0000",
+        whatsapp: newLeadPhone.replace(/\D/g, "") || "5511900000000",
+        email: newLeadEmail || "cliente@email.com",
+        type: newLeadType,
+        brokerId: newLeadBrokerId,
+        brokerName: selectedBroker?.name || "Corretor Geral",
+        origin: newLeadOrigin,
+        campaign: newLeadCampaign || "Orgânico / Direto",
+        status: "novo",
+        createdAt: new Date().toISOString().split("T")[0],
+        lastContact: new Date().toISOString().split("T")[0],
+        nextContact: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+        estimatedBudget: Number(newLeadBudget),
+        notes: newLeadNotes || "Lead cadastrado manualmente no CRM.",
+      });
+
+      setIsNewLeadModalOpen(false);
+      // Reset form
+      setNewLeadName("");
+      setNewLeadDoc("");
+      setNewLeadPhone("");
+      setNewLeadEmail("");
+      setNewLeadNotes("");
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Erro ao criar lead";
+      setCreateLeadError(errorMsg);
+    } finally {
+      setIsCreatingLead(false);
+    }
   };
 
   const handleConfirmLost = () => {
@@ -183,13 +211,11 @@ export const LeadsFunnelModule: React.FC<LeadsFunnelModuleProps> = ({
             className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
           >
             <option value="all">Todas as Origens</option>
-            <option value="Instagram Ads">Instagram Ads</option>
-            <option value="Google Ads">Google Ads</option>
-            <option value="Placa no Imóvel">Placa no Imóvel</option>
-            <option value="WhatsApp Direto">WhatsApp Direto</option>
-            <option value="Evento de Lançamento">Evento de Lançamento</option>
-            <option value="Corretor Parceiro">Corretor Parceiro</option>
-            <option value="Indicação">Indicação</option>
+            {origins.map((o) => (
+              <option key={o.id} value={o.name}>
+                {o.name}
+              </option>
+            ))}
           </select>
 
           {/* Broker filter */}
@@ -519,6 +545,13 @@ export const LeadsFunnelModule: React.FC<LeadsFunnelModuleProps> = ({
               </button>
             </div>
 
+            {createLeadError && (
+              <div className="bg-rose-950/40 border border-rose-500/50 rounded-xl p-3 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-rose-300">{createLeadError}</p>
+              </div>
+            )}
+
             <form onSubmit={handleCreateLead} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
@@ -602,32 +635,30 @@ export const LeadsFunnelModule: React.FC<LeadsFunnelModuleProps> = ({
                     onChange={(e) => setNewLeadOrigin(e.target.value as LeadOrigin)}
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
                   >
-                    <option value="Instagram Ads">Instagram Ads</option>
-                    <option value="Google Ads">Google Ads</option>
-                    <option value="Facebook Ads">Facebook Ads</option>
-                    <option value="Placa no Imóvel">Placa no Imóvel</option>
-                    <option value="Outdoor">Outdoor</option>
-                    <option value="WhatsApp Direto">WhatsApp Direto</option>
-                    <option value="Indicação">Indicação</option>
-                    <option value="Plantão de Vendas">Plantão de Vendas</option>
-                    <option value="Evento de Lançamento">Evento de Lançamento</option>
-                    <option value="Corretor Parceiro">Corretor Parceiro</option>
-                    <option value="Prospecção Ativa">Prospecção Ativa</option>
-                    <option value="Portal Imobiliário">Portal Imobiliário</option>
-                    <option value="Outros">Outros</option>
+                    <option value="">Selecione uma origem...</option>
+                    {origins.map((o) => (
+                      <option key={o.id} value={o.name}>
+                        {o.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="font-semibold text-slate-300 block mb-1">
                     Campanha Específica
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={newLeadCampaign}
                     onChange={(e) => setNewLeadCampaign(e.target.value)}
-                    placeholder="Ex: Campanha Q3 Alto Padrão"
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-amber-500 focus:outline-none"
-                  />
+                  >
+                    <option value="">Nenhuma (será "Orgânico / Direto")</option>
+                    {campaigns.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -664,15 +695,17 @@ export const LeadsFunnelModule: React.FC<LeadsFunnelModuleProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsNewLeadModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                  disabled={isCreatingLead}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 text-xs font-semibold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-amber-500/20"
+                  disabled={isCreatingLead || !newLeadOrigin}
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 text-xs font-bold transition-all shadow-md shadow-amber-500/20"
                 >
-                  Salvar e Iniciar Atendimento
+                  {isCreatingLead ? "Criando..." : "Salvar e Iniciar Atendimento"}
                 </button>
               </div>
             </form>

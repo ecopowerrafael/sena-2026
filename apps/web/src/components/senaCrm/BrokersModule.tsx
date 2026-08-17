@@ -13,22 +13,39 @@ import {
   DollarSign,
   UserCheck,
   Trophy,
+  AlertCircle,
 } from "lucide-react";
 import { Broker } from "../../types/senaCrm";
 
+interface CreateBrokerPayload {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+  creci: string;
+  teamName: string;
+  managerUserId?: string;
+  whatsapp?: string;
+  role?: string;
+}
+
 interface BrokersModuleProps {
   brokers: Broker[];
-  onAddBroker: (broker: Partial<Broker>) => void;
+  onAddBroker: (broker: CreateBrokerPayload) => Promise<void>;
 }
 
 export const BrokersModule: React.FC<BrokersModuleProps> = ({ brokers, onAddBroker }) => {
   const [isNewBrokerModalOpen, setIsNewBrokerModalOpen] = useState(false);
+  const [isCreatingBroker, setIsCreatingBroker] = useState(false);
+  const [createBrokerError, setCreateBrokerError] = useState<string | null>(null);
 
   // Form State
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [creci, setCreci] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [team, setTeam] = useState("Equipe Alpha — Alto Padrão");
   const [managerName, setManagerName] = useState("Carlos Eduardo Sena");
 
@@ -40,32 +57,49 @@ export const BrokersModule: React.FC<BrokersModuleProps> = ({ brokers, onAddBrok
     }).format(val);
   };
 
-  const handleCreateBroker = (e: React.FormEvent) => {
+  const handleCreateBroker = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !creci) return;
+    if (!name || !creci || !password) return;
 
-    onAddBroker({
-      name,
-      email,
-      phone,
-      creci,
-      team,
-      managerName,
-      status: "Ativo",
-      leadsCount: 0,
-      salesCount: 0,
-      rentalsCount: 0,
-      vgvTotal: 0,
-      commissionEarned: 0,
-      conversionRate: 0,
-      avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80`,
-    });
+    if (password !== passwordConfirm) {
+      setCreateBrokerError("As senhas não correspondem");
+      return;
+    }
 
-    setIsNewBrokerModalOpen(false);
-    setName("");
-    setEmail("");
-    setPhone("");
-    setCreci("");
+    if (password.length < 6) {
+      setCreateBrokerError("A senha deve ter no mínimo 6 caracteres");
+      return;
+    }
+
+    setIsCreatingBroker(true);
+    setCreateBrokerError(null);
+
+    try {
+      await onAddBroker({
+        name,
+        email,
+        phone: phone || "(11) 98888-0000",
+        password,
+        creci,
+        teamName: team,
+        managerUserId: managerName,
+        whatsapp: phone?.replace(/\D/g, "") || "",
+        role: "BROKER",
+      });
+
+      setIsNewBrokerModalOpen(false);
+      setName("");
+      setEmail("");
+      setPhone("");
+      setCreci("");
+      setPassword("");
+      setPasswordConfirm("");
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Erro ao criar corretor";
+      setCreateBrokerError(errorMsg);
+    } finally {
+      setIsCreatingBroker(false);
+    }
   };
 
   const totalVgvTeam = brokers.reduce((acc, b) => acc + b.vgvTotal, 0);
@@ -211,9 +245,17 @@ export const BrokersModule: React.FC<BrokersModuleProps> = ({ brokers, onAddBrok
 
       {/* New Broker Modal */}
       {isNewBrokerModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 my-8">
             <h3 className="text-base font-black text-white">Cadastrar Novo Corretor</h3>
+
+            {createBrokerError && (
+              <div className="bg-rose-950/40 border border-rose-500/50 rounded-xl p-3 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-rose-300">{createBrokerError}</p>
+              </div>
+            )}
+
             <form onSubmit={handleCreateBroker} className="space-y-3 text-xs">
               <div>
                 <label className="font-semibold text-slate-300 block mb-1">Nome Completo:</label>
@@ -268,6 +310,35 @@ export const BrokersModule: React.FC<BrokersModuleProps> = ({ brokers, onAddBrok
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
+                  <label className="font-semibold text-slate-300 block mb-1">
+                    Senha de Acesso *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Mín. 6 caracteres"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-300 block mb-1">
+                    Confirmar Senha *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={passwordConfirm}
+                    onChange={(e) => setPasswordConfirm(e.target.value)}
+                    placeholder="Repetir a senha"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
                   <label className="font-semibold text-slate-300 block mb-1">Equipe:</label>
                   <select
                     value={team}
@@ -298,15 +369,17 @@ export const BrokersModule: React.FC<BrokersModuleProps> = ({ brokers, onAddBrok
                 <button
                   type="button"
                   onClick={() => setIsNewBrokerModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold"
+                  disabled={isCreatingBroker}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 font-semibold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-md"
+                  disabled={isCreatingBroker || !password || password !== passwordConfirm}
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold shadow-md"
                 >
-                  Salvar Cadastro
+                  {isCreatingBroker ? "Salvando..." : "Salvar Cadastro"}
                 </button>
               </div>
             </form>

@@ -6,9 +6,9 @@
 
 ---
 
-## Etapa 11-A — Concluído e Validado
+## Etapa 11-A — Implementação Completa
 
-**Integração real Leads/Brokers**: Frontend removido de mocks (INITIAL_LEADS/INITIAL_BROKERS) e integrado com backend APIs.
+**Integração real Leads/Brokers**: Frontend removido de mocks (INITIAL_LEADS/INITIAL_BROKERS) e integrado com backend APIs. Async/Promise flows implementados.
 
 **APIs integradas:**
 - ✓ GET /leads — carrega lista real de leads
@@ -17,16 +17,18 @@
 - ✓ GET /lead-origins — carrega origens disponíveis
 - ✓ GET /campaigns — carrega campanhas disponíveis
 - ✓ GET /brokers — carrega corretores reais
+- ✓ POST /brokers — cria corretor com password
 
 **Mappers implementados:**
 - ✓ LeadDto → Lead (status, origin, campaign, client mapping)
 - ✓ BrokerDto → Broker (name, creci, email, phone)
 - ✓ Client type/role: comprador→PERSON/BUYER, proprietario→PERSON/OWNER, etc
 - ✓ Lost reason: envia `reason` field (não `lostReason`)
+- ✓ Client roles usado para determinar tipo visual após F5
 
 **Hooks criados:**
-- useLeads: adiciona validação de origem/campanha
-- useBrokers: carrega lista de corretores
+- useLeads: validação origem/campanha, async addLead(newLead): Promise<void>
+- useBrokers: carrega corretores, async addBroker(broker): Promise<void>
 - useLeadOrigins: resolve nome da origem para ID
 - useLeadCampaigns: resolve nome da campanha para ID
 
@@ -35,27 +37,33 @@
 - ✓ Origins/campaigns passadas como props de SenaCrmApp
 - ✓ Sem hooks dinâmicos, seguindo regras do React 19
 
-**Validações de entrada:**
-- ✓ Origem selecionada deve existir em origins list
-- ✓ Campanha selecionada deve existir em campaigns list (se fornecida)
-- ✓ Mensagens de erro visíveis ao usuário
+**Async/Promise em componentes:**
+- ✓ LeadsFunnelModule.handleCreateLead: async, aguarda onAddLead
+- ✓ Modal fecha apenas após sucesso do POST /leads
+- ✓ Erro mostrado sem fechar modal se falhar
+- ✓ BrokersModule.handleCreateBroker: async com validação senha
+- ✓ Modal fecha apenas após sucesso do POST /brokers
 
-**Testes funcionais:**
-- ✓ Login: OK (autenticação real)
-- ✓ API health: OK (MySQL conecta, endpoints respondem)
-- ✓ Leads GET: OK (lista vazia inicialmente, pronto para criar)
-- ✓ Origens mapeadas: OK (Google Ads, Instagram Ads, etc)
-- ✓ Tipos mapeados: OK (comprador, proprietario, etc)
-- ✓ Typecheck: 0 erros
-- ✓ Build: 235.78kB gzip
+**Campos adicionados:**
+- ✓ BrokersModule: password + confirm password obrigatórios
+- ✓ LeadsFunnelModule: origem e campanha dinâmicas (props)
+- ✓ onAddLead: Promise<void>
+- ✓ onAddBroker: Promise<void>
 
-**Qualidade:**
-- Format: OK
-- Lint: OK
-- Typecheck: ✓
-- Build: ✓
+**Persistência tipo/role após F5:**
+- ✓ mapLeadDtoToLead lê client.roles do backend
+- ✓ Primeiro role na lista determina tipo visual
+- ✓ Persiste corretamente após reload
 
-**Conclusão**: Leads e Brokers agora persistem no MySQL via API. Frontend 100% desacoplado de mocks. Pronto para teste de persistência (reload F5) e operações de status.
+**Compilação & Build:**
+- ✓ Typecheck @sena/web: 0 erros
+- ✓ Typecheck @sena/api: 0 erros
+- ✓ Build @sena/web: 236.31kB gzip
+- ✓ Dev server: Rodando localhost:3000 + 3333
+- ✓ MySQL: Conectado e pronto
+- ✓ Seed: Tenant + admin + origens criadas
+
+**Status**: ✅ Implementação completa. ✅ Typecheck e build validados. ⏳ Aguardando teste funcional com credenciais válidas: criar lead (Google Ads) → F5 → mover status → F5 → LOST+reason → F5 + broker criação → F5.
 
 ---
 

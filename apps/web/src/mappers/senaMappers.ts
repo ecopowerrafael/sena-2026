@@ -48,7 +48,7 @@ export function mapLeadDtoToLead(dto: LeadDto): Lead {
     phone: dto.client.phone || "(11) 90000-0000",
     whatsapp: dto.client.whatsapp || (dto.client.phone || "5511900000000").replace(/\D/g, ""),
     email: dto.client.email || "cliente@email.com",
-    type: mapClientType(dto.client.type),
+    type: mapClientType(dto.client.type, dto.client.roles),
     brokerId: dto.assignedBrokerId,
     brokerName: dto.assignedBrokerName,
     origin: dto.originName as LeadOrigin,
@@ -78,9 +78,21 @@ export function mapLeadToUpdatePayload(
 }
 
 /**
- * Maps client type values
+ * Maps client type and roles to determine lead type
  */
-function mapClientType(backendType: string): "comprador" | "proprietario" | "locador" | "locatario" | "investidor" {
+function mapClientType(backendType: string, roles?: string[]): "comprador" | "proprietario" | "locador" | "locatario" | "investidor" {
+  if (roles && roles.length > 0) {
+    const roleMap: Record<string, "comprador" | "proprietario" | "locador" | "locatario" | "investidor"> = {
+      BUYER: "comprador",
+      OWNER: "proprietario",
+      LESSOR: "locador",
+      TENANT: "locatario",
+      INVESTOR: "investidor",
+    };
+    for (const role of roles) {
+      if (roleMap[role]) return roleMap[role];
+    }
+  }
   const typeMap: Record<string, "comprador" | "proprietario" | "locador" | "locatario" | "investidor"> = {
     PERSON: "comprador",
     BUYER: "comprador",

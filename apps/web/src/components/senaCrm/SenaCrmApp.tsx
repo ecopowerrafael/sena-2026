@@ -354,11 +354,12 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
   };
 
   // Handlers: Brokers
-  const handleAddBroker = async (newB: Partial<Broker>) => {
+  const handleAddBroker = async (newB: any) => {
     try {
       await apiAddBroker(newB);
     } catch (err) {
-      console.error("Failed to add broker:", err);
+      const errorMsg = err instanceof Error ? err.message : "Erro ao criar corretor";
+      throw new Error(errorMsg);
     }
   };
 
@@ -414,6 +415,8 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
               leads={leads}
               brokers={brokers}
               properties={properties}
+              origins={origins}
+              campaigns={campaigns}
               onAddLead={handleAddLead}
               onUpdateLeadStatus={handleUpdateLeadStatus}
               onSelectLead={(l) => {}}

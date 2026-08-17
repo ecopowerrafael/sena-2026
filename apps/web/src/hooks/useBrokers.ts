@@ -33,14 +33,18 @@ export function useBrokers() {
     }
   };
 
-  const addBroker = async (newBroker: Partial<Broker>) => {
+  const addBroker = async (newBrokerPayload: any) => {
     try {
       const payload = {
-        name: newBroker.name || "Corretor",
-        email: newBroker.email || "corretor@senaimoveis.com.br",
-        phone: newBroker.phone || "(11) 98888-0000",
-        creci: newBroker.creci || "CRECI 000.000-F",
-        avatarUrl: newBroker.avatar,
+        name: newBrokerPayload.name,
+        email: newBrokerPayload.email,
+        phone: newBrokerPayload.phone || "(11) 98888-0000",
+        password: newBrokerPayload.password,
+        creci: newBrokerPayload.creci,
+        teamName: newBrokerPayload.teamName,
+        whatsapp: newBrokerPayload.whatsapp,
+        role: newBrokerPayload.role || "BROKER",
+        managerUserId: newBrokerPayload.managerUserId,
       };
 
       const createdDto = await api.post<BrokerDto>("/brokers", payload);

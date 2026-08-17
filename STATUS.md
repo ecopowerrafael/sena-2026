@@ -1,8 +1,24 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
 **Última atualização:** 17/08/2026  
-**Fase atual:** Etapa 11-A concluída — integração API real  
-**Estado geral:** SISTEMA INTEGRADO COM BACKEND — ETAPAS 0–11-A CONCLUÍDAS
+**Fase atual:** Etapa 11-B concluída — Clients + Properties + InterestProfile + Matching real  
+**Estado geral:** ETAPAS 0–11-B CONCLUÍDAS E VALIDADAS
+
+---
+
+## Etapa 11-B — CONCLUÍDO E VALIDADO
+
+Clientes API/UI/F5: OK  
+Clientes edição/roles: OK  
+Properties API/UI/F5: OK  
+Owners N:N: OK  
+InterestProfile API/UI/F5: OK  
+Matching backend/UI/F5: OK  
+Typecheck API: OK  
+Typecheck Web: OK  
+Build Web: OK  
+
+**Último commit funcional:** 74dc6a8762dc4062c1b71fa0f8c47c88dd5100cc
 
 ---
 

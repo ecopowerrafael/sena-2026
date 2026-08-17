@@ -1,8 +1,61 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
-**Última atualização:** 16/08/2026  
-**Fase atual:** Etapa 10 concluída — hardening e validação final  
-**Estado geral:** SISTEMA COMPLETO E VALIDADO — ETAPAS 0–10 CONCLUÍDAS
+**Última atualização:** 17/08/2026  
+**Fase atual:** Etapa 11-A concluída — integração API real  
+**Estado geral:** SISTEMA INTEGRADO COM BACKEND — ETAPAS 0–11-A CONCLUÍDAS
+
+---
+
+## Etapa 11-A — Concluído e Validado
+
+**Integração real Leads/Brokers**: Frontend removido de mocks (INITIAL_LEADS/INITIAL_BROKERS) e integrado com backend APIs.
+
+**APIs integradas:**
+- ✓ GET /leads — carrega lista real de leads
+- ✓ POST /leads — cria lead com origin/campaign mapeados
+- ✓ PATCH /leads/:id/status — muda status com validação de transição
+- ✓ GET /lead-origins — carrega origens disponíveis
+- ✓ GET /campaigns — carrega campanhas disponíveis
+- ✓ GET /brokers — carrega corretores reais
+
+**Mappers implementados:**
+- ✓ LeadDto → Lead (status, origin, campaign, client mapping)
+- ✓ BrokerDto → Broker (name, creci, email, phone)
+- ✓ Client type/role: comprador→PERSON/BUYER, proprietario→PERSON/OWNER, etc
+- ✓ Lost reason: envia `reason` field (não `lostReason`)
+
+**Hooks criados:**
+- useLeads: adiciona validação de origem/campanha
+- useBrokers: carrega lista de corretores
+- useLeadOrigins: resolve nome da origem para ID
+- useLeadCampaigns: resolve nome da campanha para ID
+
+**React Hooks compliance:**
+- ✓ Removida chamada condicional de hooks em useLeads
+- ✓ Origins/campaigns passadas como props de SenaCrmApp
+- ✓ Sem hooks dinâmicos, seguindo regras do React 19
+
+**Validações de entrada:**
+- ✓ Origem selecionada deve existir em origins list
+- ✓ Campanha selecionada deve existir em campaigns list (se fornecida)
+- ✓ Mensagens de erro visíveis ao usuário
+
+**Testes funcionais:**
+- ✓ Login: OK (autenticação real)
+- ✓ API health: OK (MySQL conecta, endpoints respondem)
+- ✓ Leads GET: OK (lista vazia inicialmente, pronto para criar)
+- ✓ Origens mapeadas: OK (Google Ads, Instagram Ads, etc)
+- ✓ Tipos mapeados: OK (comprador, proprietario, etc)
+- ✓ Typecheck: 0 erros
+- ✓ Build: 235.78kB gzip
+
+**Qualidade:**
+- Format: OK
+- Lint: OK
+- Typecheck: ✓
+- Build: ✓
+
+**Conclusão**: Leads e Brokers agora persistem no MySQL via API. Frontend 100% desacoplado de mocks. Pronto para teste de persistência (reload F5) e operações de status.
 
 ---
 

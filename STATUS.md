@@ -1,8 +1,69 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
 **Última atualização:** 17/08/2026  
-**Fase atual:** Etapa 11-C implementada — Visits + Proposals/Sales + Commissions real  
-**Estado geral:** ETAPAS 0–11-B CONCLUÍDAS E VALIDADAS; ETAPA 11-C IMPLEMENTADA (validação pendente)
+**Fase atual:** Etapa 11-D implementada — Rentals + Developments/Lots + Dashboard real  
+**Estado geral:** ETAPAS 0–11-B CONCLUÍDAS E VALIDADAS; ETAPAS 11-C E 11-D IMPLEMENTADAS (validação pendente)
+
+---
+
+## Etapa 11-D — IMPLEMENTADA (Validação funcional pendente)
+
+### ✅ IMPLEMENTAÇÃO CONFIRMADA
+
+**Controllers + Módulos:**
+- ✓ rentals.controller.ts — leases, charges, inspections, maintenance endpoints
+- ✓ developments.controller.ts — developments, lots, proposals, reservations endpoints
+- ✓ analytics.controller.ts — dashboard metrics (10 KPIs em paralelo)
+- ✓ RentalsModule registrado e integrado
+- ✓ DevelopmentsModule registrado e integrado  
+- ✓ AnalyticsModule registrado e integrado
+
+**Hooks Frontend:**
+- ✓ useLeases: GET/POST/PATCH /rentals/leases (+ tenants/owners)
+- ✓ useCharges: GET/POST charges, recordPayment, listPayouts reais
+- ✓ useLots: GET lots, POST reserve (atômico), simulate
+- ✓ useDashboardAnalytics: GET /analytics/dashboard (10 KPIs)
+
+**Módulos Integrados (Sem Mocks):**
+- ✓ RentalsModule: contratos reais + cobranças + repasses automáticos
+- ✓ DevelopmentsLotsModule: lotes com reserva dupla-prevenção, simulador real
+- ✓ DashboardModule: 10 KPIs, ranking corretores, charts reais
+
+**Atomicity & Concurrency:**
+- ✓ useLots.reserve → POST /developments/lots/reserve (Prisma $transaction)
+- ✓ Double-reservation prevention via transaction + status validation
+- ✓ Charge payment → autorecalc repayment (charges.service:123)
+
+**Código Limpo:**
+- ✓ Removidos props mock: rentalContracts, rentalPayouts, developments, sales
+- ✓ RentalsModule props → hooks
+- ✓ DevelopmentsLotsModule props → useLots
+- ✓ DashboardModule props → useDashboardAnalytics
+- ✓ SenaCrmApp simplificado (sem data propagation)
+
+**Build & Type:**
+- ✓ Typecheck API: 0 erros
+- ✓ Typecheck Web: 0 erros
+- ✓ Build Web: 219.79 kB gzip (redução de 11.83 kB vs E11-C)
+
+### ⏳ PENDENTE PARA E11-E/HOMOLOGAÇÃO
+
+- Teste F5: Lease create → F5 → verify persistence
+- Teste F5: Charge payment → F5 → payout recalc
+- Teste F5: Lot reserve → F5 → verify atomic status
+- Double reservation concurrent test (2 simultaneous POST /lots/reserve)
+- Dashboard metric accuracy vs DB (cross-reference counts)
+- Tenant isolation: cross-tenant access blocked (404)
+- ReportsModule wiring (analytics pronto, UI não integrada)
+
+### 🔴 BLOCKER DOCUMENTADO
+
+Mesmo que E11-C: Ambiente de desenvolvimento não conecta ao banco via npm run dev:api.
+- API compila (NestJS 0 errors)
+- API inicia (nest start --watch OK)
+- API responde (curl funciona)
+- API retorna INTERNAL_ERROR ao autenticar (provável DB connection)
+- Impacto: F5 browser testing impossível até E11-E com ambiente limpo
 
 ---
 

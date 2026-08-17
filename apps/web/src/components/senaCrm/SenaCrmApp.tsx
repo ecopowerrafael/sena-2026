@@ -413,10 +413,8 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
 
           {(currentTab === "clientes" || currentTab === "proprietarios") && (
             <ClientsMatchingModule
-              leads={leads}
               properties={properties}
               onSelectProperty={(p) => setSelectedPropertyForDetail(p)}
-              onSelectLead={(l) => {}}
             />
           )}
 

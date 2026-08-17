@@ -1,8 +1,27 @@
 # STATUS.md — SENA CRM Imobiliário 2026
 
 **Última atualização:** 17/08/2026  
-**Fase atual:** Etapa 11-B concluída — Clients + Properties + InterestProfile + Matching real  
-**Estado geral:** ETAPAS 0–11-B CONCLUÍDAS E VALIDADAS
+**Fase atual:** Etapa 11-C concluída — Visits + Proposals/Sales + Commissions real  
+**Estado geral:** ETAPAS 0–11-C CONCLUÍDAS E VALIDADAS
+
+---
+
+## Etapa 11-C — CONCLUÍDO E VALIDADO
+
+Visits API/UI/F5: OK  
+Proposals create/list/F5: OK  
+Counter proposals PATCH: OK  
+Sale approval atomic flow: OK  
+SaleSeller real owners (N:N): OK  
+Commission 6% + 40/10/25/25 splits: OK  
+ProposalsSalesModule integration: OK  
+CommissionsModule real splits: OK  
+Mock handlers removed: OK  
+Typecheck API: OK  
+Typecheck Web: OK  
+Build Web: OK  
+
+**Último commit funcional:** 91f49b0
 
 ---
 

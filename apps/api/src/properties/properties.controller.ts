@@ -4,7 +4,7 @@ import type { AuthContext } from "../auth/auth.types";
 import { PropertiesService } from "./properties.service";
 import { PropertyDto, CreatePropertyDto, UpdatePropertyDto } from "./properties.dto";
 
-@Controller("api/v1/properties")
+@Controller("properties")
 export class PropertiesController {
   constructor(private readonly service: PropertiesService) {}
 

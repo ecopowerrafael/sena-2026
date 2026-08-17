@@ -3,7 +3,7 @@ import { CurrentUser } from "../auth/decorators";
 import type { AuthContext } from "../auth/auth.types";
 import { MatchingService, type PropertyMatch } from "./matching.service";
 
-@Controller("api/v1/clients/:clientId/matches")
+@Controller("clients/:clientId/matches")
 export class MatchingController {
   constructor(private readonly service: MatchingService) {}
 

@@ -4,7 +4,7 @@ import type { AuthContext } from "../auth/auth.types";
 import { InterestProfileService } from "./interest-profile.service";
 import { InterestProfileDto, UpdateInterestProfileDto } from "./interest-profile.dto";
 
-@Controller("api/v1/clients/:clientId/interest-profile")
+@Controller("clients/:clientId/interest-profile")
 export class InterestProfileController {
   constructor(private readonly service: InterestProfileService) {}
 

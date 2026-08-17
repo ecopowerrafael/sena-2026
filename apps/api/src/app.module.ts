@@ -15,6 +15,7 @@ import { UsersModule } from "./users/users.module";
 import { ClientsModule } from "./clients/clients.module";
 import { LeadsModule } from "./leads/leads.module";
 import { BrokersModule } from "./brokers/brokers.module";
+import { PropertiesModule } from "./properties/properties.module";
 import { CryptoModule } from "./common/crypto.module";
 import { SalesModule } from "./sales/sales.module";
 import { RentalsModule } from "./rentals/rentals.module";
@@ -48,6 +49,7 @@ import { AiModule } from "./ai/ai.module";
     ClientsModule,
     LeadsModule,
     BrokersModule,
+    PropertiesModule,
     SalesModule,
     RentalsModule,
     DevelopmentsModule,

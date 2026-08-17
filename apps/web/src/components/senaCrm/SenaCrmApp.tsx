@@ -4,6 +4,8 @@ import { pathFromTab, tabFromPath } from "../../routes/senaRoutes";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { useLeads } from "../../hooks/useLeads";
 import { useBrokers } from "../../hooks/useBrokers";
+import { useProperties } from "../../hooks/useProperties";
+import { useClients } from "../../hooks/useClients";
 import { useLeadOrigins } from "../../hooks/useLeadOrigins";
 import { useLeadCampaigns } from "../../hooks/useLeadCampaigns";
 import { SenaSidebar, SenaTab } from "./SenaSidebar";
@@ -22,7 +24,6 @@ import { ReportsModule } from "./ReportsModule";
 import { PropertyDetailModal } from "./PropertyDetailModal";
 
 import {
-  INITIAL_PROPERTIES,
   INITIAL_VISITS,
   INITIAL_PROPOSALS,
   INITIAL_SALES,
@@ -91,10 +92,23 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
     error: brokersError,
     addBroker: apiAddBroker,
   } = useBrokers();
+  const {
+    properties: apiProperties,
+    isLoading: propertiesLoading,
+    error: propertiesError,
+    addProperty: apiAddProperty,
+    updateProperty: apiUpdateProperty,
+  } = useProperties();
+  const {
+    clients: apiClients,
+    isLoading: clientsLoading,
+    error: clientsError,
+    addClient: apiAddClient,
+  } = useClients();
 
   // Core State
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [properties, setProperties] = useState<Property[]>(INITIAL_PROPERTIES);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [visits, setVisits] = useState<Visit[]>(INITIAL_VISITS);
   const [proposals, setProposals] = useState<Proposal[]>(INITIAL_PROPOSALS);
@@ -119,6 +133,10 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
     setBrokers(apiBrokers);
   }, [apiBrokers]);
 
+  useEffect(() => {
+    setProperties(apiProperties);
+  }, [apiProperties]);
+
   // Handlers: Leads
   const handleAddLead = async (newLead: Partial<Lead>) => {
     try {
@@ -137,42 +155,12 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
   };
 
   // Handlers: Properties
-  const handleAddProperty = (newProp: Partial<Property>) => {
-    const fullProp: Property = {
-      id: `prop-${Date.now()}`,
-      code: newProp.code || `SENA-${800 + properties.length + 1}`,
-      title: newProp.title || "Imóvel Novo de Alto Padrão",
-      type: newProp.type || "Casa Residencial",
-      purpose: newProp.purpose || "venda",
-      ownerName: newProp.ownerName || "Proprietário",
-      ownerPhone: newProp.ownerPhone || "(11) 99999-9999",
-      brokerCaptatorId: newProp.brokerCaptatorId || brokers[0]?.id || "brk-1",
-      brokerCaptatorName: newProp.brokerCaptatorName || "Rodrigo Mendonça",
-      salePrice: newProp.salePrice || 2500000,
-      rentalPrice: newProp.rentalPrice,
-      condoFee: newProp.condoFee || 1500,
-      iptu: newProp.iptu || 500,
-      address: newProp.address || "Rua Exemplo, 100",
-      neighborhood: newProp.neighborhood || "Alphaville",
-      city: newProp.city || "Barueri",
-      state: "SP",
-      totalArea: newProp.totalArea || 350,
-      privateArea: newProp.privateArea || 300,
-      bedrooms: newProp.bedrooms || 4,
-      suites: newProp.suites || 3,
-      bathrooms: newProp.bathrooms || 5,
-      parkingSpots: newProp.parkingSpots || 4,
-      features: newProp.features || ["Piscina", "Gourmet"],
-      images: newProp.images || [
-        "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&auto=format&fit=crop&q=80",
-      ],
-      documentationStatus: "100% Regularizada",
-      isExclusive: newProp.isExclusive ?? true,
-      status: "Disponível",
-      createdAt: new Date().toISOString().split("T")[0],
-      viewsCount: 1,
-    };
-    setProperties([fullProp, ...properties]);
+  const handleAddProperty = async (newProp: Partial<Property>) => {
+    try {
+      await apiAddProperty(newProp);
+    } catch (err) {
+      console.error("Failed to add property:", err);
+    }
   };
 
   // Handlers: Visits

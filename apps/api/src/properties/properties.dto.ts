@@ -1,0 +1,100 @@
+export type PropertyType = "RESIDENTIAL_HOUSE" | "APARTMENT" | "PENTHOUSE" | "TOWNHOUSE" | "LOT";
+export type PropertyPurpose = "SALE" | "RENT" | "BOTH";
+export type PropertyStatus = "CAPTURING" | "AVAILABLE" | "RESERVED" | "NEGOTIATION" | "SOLD";
+export type DocumentationStatus = "FULLY_REGULARIZED" | "IN_INVENTORY" | "HABITE_PENDING" | "FINANCEABLE";
+
+export class PropertyDto {
+  id!: string;
+  tenantId!: string;
+  code!: string;
+  title!: string;
+  type!: PropertyType;
+  purpose!: PropertyPurpose;
+  captatorBrokerId?: string;
+  captatorBrokerName?: string;
+  salePrice?: number;
+  rentalPrice?: number;
+  condoFee?: number;
+  iptu?: number;
+  addressLine!: string;
+  number?: string;
+  complement?: string;
+  neighborhood!: string;
+  city!: string;
+  state!: string;
+  zipCode?: string;
+  latitude?: number;
+  longitude?: number;
+  totalArea?: number;
+  privateArea?: number;
+  bedrooms?: number;
+  suites?: number;
+  bathrooms?: number;
+  parkingSpots?: number;
+  documentationStatus!: DocumentationStatus;
+  isExclusive!: boolean;
+  exclusivityEndsAt?: Date;
+  status!: PropertyStatus;
+  owners?: Array<{ clientId: string; clientName: string; percentage?: number; isPrimary: boolean }>;
+  createdAt!: Date;
+  updatedAt!: Date;
+}
+
+export class CreatePropertyDto {
+  code!: string;
+  title!: string;
+  type!: PropertyType;
+  purpose!: PropertyPurpose;
+  captatorBrokerId?: string;
+  salePrice?: number;
+  rentalPrice?: number;
+  condoFee?: number;
+  iptu?: number;
+  addressLine!: string;
+  number?: string;
+  complement?: string;
+  neighborhood!: string;
+  city!: string;
+  state!: string;
+  zipCode?: string;
+  latitude?: number;
+  longitude?: number;
+  totalArea?: number;
+  privateArea?: number;
+  bedrooms?: number;
+  suites?: number;
+  bathrooms?: number;
+  parkingSpots?: number;
+  isExclusive?: boolean;
+  owners?: Array<{ clientId: string; percentage?: number; isPrimary?: boolean }>;
+}
+
+export class UpdatePropertyDto {
+  title?: string;
+  type?: PropertyType;
+  purpose?: PropertyPurpose;
+  captatorBrokerId?: string;
+  salePrice?: number;
+  rentalPrice?: number;
+  condoFee?: number;
+  iptu?: number;
+  addressLine?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  latitude?: number;
+  longitude?: number;
+  totalArea?: number;
+  privateArea?: number;
+  bedrooms?: number;
+  suites?: number;
+  bathrooms?: number;
+  parkingSpots?: number;
+  documentationStatus?: DocumentationStatus;
+  isExclusive?: boolean;
+  exclusivityEndsAt?: Date;
+  status?: PropertyStatus;
+}

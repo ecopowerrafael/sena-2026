@@ -13,54 +13,54 @@ import {
   Sparkles,
   Award,
   FileCheck,
+  AlertCircle,
+  X,
 } from "lucide-react";
-import { Proposal, SaleClosure, Property, Broker, Lead } from "../../types/senaCrm";
+import type { Property } from "../../types/senaCrm";
+import { useProposals, type Proposal } from "../../hooks/useProposals";
+import { useSales } from "../../hooks/useSales";
+import { useCommissions } from "../../hooks/useCommissions";
+import { useClients } from "../../hooks/useClients";
+import { useProperties } from "../../hooks/useProperties";
 
 interface ProposalsSalesModuleProps {
-  proposals: Proposal[];
-  sales: SaleClosure[];
   properties: Property[];
-  brokers: Broker[];
-  leads: Lead[];
-  onAddProposal: (proposal: Partial<Proposal>) => void;
-  onApproveProposal: (proposalId: string, finalSaleDetails: Partial<SaleClosure>) => void;
-  onSendCounterProposal: (proposalId: string, counterPrice: number, notes: string) => void;
 }
 
 export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
-  proposals,
-  sales,
   properties,
-  brokers,
-  leads,
-  onAddProposal,
-  onApproveProposal,
-  onSendCounterProposal,
 }) => {
+  const { proposals, isLoading: proposalsLoading, createProposal, updateProposal, approveProposal } = useProposals();
+  const { sales, isLoading: salesLoading, reload: reloadSales } = useSales();
+  const { commissions } = useCommissions();
+  const { clients } = useClients();
+  const hookProperties = useProperties();
+
   const [activeTab, setActiveTab] = useState<"proposals" | "sales">("proposals");
   const [isNewProposalModalOpen, setIsNewProposalModalOpen] = useState(false);
+  const [isModalLoading, setIsModalLoading] = useState(false);
   const [proposalToClose, setProposalToClose] = useState<Proposal | null>(null);
   const [proposalForCounter, setProposalForCounter] = useState<Proposal | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // New Proposal Form
-  const [clientName, setClientName] = useState(leads[0]?.name || "");
-  const [clientDoc, setClientDoc] = useState(leads[0]?.document || "");
-  const [propertyCode, setPropertyCode] = useState(properties[0]?.code || "");
-  const [brokerName, setBrokerName] = useState(brokers[0]?.name || "");
-  const [proposedPrice, setProposedPrice] = useState(4500000);
-  const [downPayment, setDownPayment] = useState(1000000);
-  const [paymentDesc, setPaymentDesc] = useState(
-    "Entrada de recursos próprios + Financiamento Bancário."
-  );
+  const [newProposalForm, setNewProposalForm] = useState({
+    clientId: "",
+    propertyId: "",
+    proposedPrice: 4500000,
+    downPayment: 1000000,
+    paymentDescription: "Entrada de recursos próprios + Financiamento Bancário.",
+  });
 
   // Counter proposal form
   const [counterPrice, setCounterPrice] = useState(4700000);
   const [counterNotes, setCounterNotes] = useState("");
 
   // Sale closure modal form
-  const [salePaymentType, setSalePaymentType] = useState<any>("Financiamento Bancário");
-  const [saleBank, setSaleBank] = useState("Itaú Private");
-  const [contractNumber, setContractNumber] = useState(`CCV-SENA-2026/0${sales.length + 80}`);
+  const [saleForm, setSaleForm] = useState({
+    paymentType: "Financiamento Bancário",
+    contractNumber: "",
+  });
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -70,84 +70,114 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
     }).format(val);
   };
 
-  const handleCreateProposal = (e: React.FormEvent) => {
+  const handleCreateProposal = async (e: React.FormEvent) => {
     e.preventDefault();
-    const prop = properties.find((p) => p.code === propertyCode);
-    const newCode = `PROP-2026-0${proposals.length + 45}`;
+    setErrorMessage(null);
 
-    onAddProposal({
-      code: newCode,
-      clientName,
-      clientDocument: clientDoc || "000.000.000-00",
-      propertyCode,
-      propertyTitle: prop?.title || "Imóvel Selecionado",
-      brokerName,
-      advertisedPrice: prop?.salePrice || 5000000,
-      proposedPrice: Number(proposedPrice),
-      downPayment: Number(downPayment),
-      installmentsCount: 1,
-      installmentsValue: Number(proposedPrice) - Number(downPayment),
-      paymentMethodDescription: paymentDesc,
-      status: "Em Análise",
-      createdAt: new Date().toISOString().split("T")[0],
-      updatedAt: new Date().toISOString().split("T")[0],
-      history: [
-        {
-          date: `${new Date().toISOString().split("T")[0]} 10:00`,
-          author: brokerName,
-          action: `Proposta inicial formalizada no valor de ${formatCurrency(Number(proposedPrice))}.`,
-        },
-      ],
-    });
+    if (!newProposalForm.clientId || !newProposalForm.propertyId) {
+      setErrorMessage("Cliente e Imóvel são obrigatórios");
+      return;
+    }
 
-    setIsNewProposalModalOpen(false);
+    try {
+      setIsModalLoading(true);
+      const prop = hookProperties.properties.find((p) => p.id === newProposalForm.propertyId);
+
+      await createProposal({
+        clientId: newProposalForm.clientId,
+        propertyId: newProposalForm.propertyId,
+        advertisedPrice: prop?.salePrice || 5000000,
+        proposedPrice: newProposalForm.proposedPrice,
+        downPayment: newProposalForm.downPayment,
+        paymentDescription: newProposalForm.paymentDescription,
+      });
+
+      setIsNewProposalModalOpen(false);
+      setNewProposalForm({
+        clientId: "",
+        propertyId: "",
+        proposedPrice: 4500000,
+        downPayment: 1000000,
+        paymentDescription: "Entrada de recursos próprios + Financiamento Bancário.",
+      });
+    } catch (err) {
+      console.error("Failed to create proposal:", err);
+      setErrorMessage(err instanceof Error ? err.message : "Erro ao criar proposta");
+    } finally {
+      setIsModalLoading(false);
+    }
   };
 
-  const handleConfirmSaleClosure = (e: React.FormEvent) => {
+  const handleConfirmSaleClosure = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!proposalToClose) return;
+    setErrorMessage(null);
 
-    const prop = properties.find((p) => p.code === proposalToClose.propertyCode);
-    const finalPrice = proposalToClose.counterProposalPrice || proposalToClose.proposedPrice;
-    const commission = finalPrice * 0.06; // 6% comissão
+    if (!proposalToClose || !saleForm.contractNumber) {
+      setErrorMessage("Número de contrato é obrigatório");
+      return;
+    }
 
-    onApproveProposal(proposalToClose.id, {
-      code: `VENDA-2026-0${sales.length + 19}`,
-      clientName: proposalToClose.clientName,
-      ownerName: prop?.ownerName || "Proprietário",
-      propertyCode: proposalToClose.propertyCode,
-      propertyTitle: proposalToClose.propertyTitle,
-      brokerName: proposalToClose.brokerName,
-      captatorName: prop?.brokerCaptatorName || "Rodrigo Mendonça",
-      finalSalePrice: finalPrice,
-      saleDate: new Date().toISOString().split("T")[0],
-      paymentType: salePaymentType,
-      bankFinancing:
-        salePaymentType === "Financiamento Bancário"
-          ? {
-              bank: saleBank,
-              approvedAmount: finalPrice - proposalToClose.downPayment,
-              status: "Aprovado",
-            }
-          : undefined,
-      documentationStatus: "Contrato Assinado",
-      contractNumber,
-      commissionTotal: commission,
-    });
+    try {
+      setIsModalLoading(true);
+      const finalPrice = proposalToClose.counterProposalPrice || proposalToClose.proposedPrice;
 
-    setProposalToClose(null);
+      await approveProposal(proposalToClose.id, {
+        finalSalePrice: finalPrice,
+        saleDate: new Date().toISOString().split("T")[0],
+        paymentType: saleForm.paymentType,
+        contractNumber: saleForm.contractNumber,
+      });
+
+      setProposalToClose(null);
+      setSaleForm({ paymentType: "Financiamento Bancário", contractNumber: "" });
+      await reloadSales();
+    } catch (err) {
+      console.error("Failed to approve proposal:", err);
+      setErrorMessage(err instanceof Error ? err.message : "Erro ao fechar venda");
+    } finally {
+      setIsModalLoading(false);
+    }
   };
 
-  const handleConfirmCounter = (e: React.FormEvent) => {
+  const handleConfirmCounter = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!proposalForCounter) return;
+    setErrorMessage(null);
 
-    onSendCounterProposal(
-      proposalForCounter.id,
-      Number(counterPrice),
-      counterNotes || "Contraproposta formal enviada ao proponente."
-    );
-    setProposalForCounter(null);
+    if (!proposalForCounter || !counterNotes.trim()) {
+      setErrorMessage("Notas da contraproposta são obrigatórias");
+      return;
+    }
+
+    try {
+      setIsModalLoading(true);
+      await updateProposal(proposalForCounter.id, {
+        counterProposalPrice: counterPrice,
+        counterProposalNotes: counterNotes,
+        status: "COUNTER_PROPOSED",
+      });
+
+      setProposalForCounter(null);
+      setCounterPrice(0);
+      setCounterNotes("");
+    } catch (err) {
+      console.error("Failed to send counter proposal:", err);
+      setErrorMessage(err instanceof Error ? err.message : "Erro ao enviar contraproposta");
+    } finally {
+      setIsModalLoading(false);
+    }
+  };
+
+  const getClientName = (clientId: string) => {
+    return clients.find((c) => c.id === clientId)?.name || "---";
+  };
+
+  const getPropertyName = (propId: string) => {
+    return hookProperties.properties.find((p) => p.id === propId)?.title || "---";
+  };
+
+  const getSaleCommission = (saleId: string) => {
+    const commission = commissions.find((c) => c.saleId === saleId);
+    return commission?.totalValue || 0;
   };
 
   return (
@@ -200,202 +230,194 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
       </div>
 
       {activeTab === "proposals" ? (
-        /* Proposals List with Negotiation History */
         <div className="space-y-4">
-          {proposals.map((propDeal) => {
-            const difference = propDeal.proposedPrice - propDeal.advertisedPrice;
-            const diffPercent = ((difference / propDeal.advertisedPrice) * 100).toFixed(1);
+          {proposalsLoading ? (
+            <div className="text-xs text-slate-400 py-8 text-center">Carregando propostas...</div>
+          ) : proposals.length === 0 ? (
+            <div className="text-xs text-slate-400 py-8 text-center">Nenhuma proposta registrada</div>
+          ) : (
+            proposals.map((propDeal) => {
+              const difference = propDeal.proposedPrice - propDeal.advertisedPrice;
+              const diffPercent = ((difference / propDeal.advertisedPrice) * 100).toFixed(1);
+              const statusDisplay =
+                propDeal.status === "COUNTER_PROPOSED"
+                  ? "Contraproposta Enviada"
+                  : propDeal.status === "APPROVED"
+                    ? "Aceita - Vendida"
+                    : propDeal.status === "SUBMITTED"
+                      ? "Submetida"
+                      : propDeal.status === "DRAFT"
+                        ? "Rascunho"
+                        : propDeal.status;
 
-            return (
-              <div
-                key={propDeal.id}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xs space-y-4"
-              >
-                {/* Header Info */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-300 font-extrabold text-xs border border-amber-500/30">
-                      {propDeal.code}
-                    </span>
-                    <h3 className="font-bold text-sm text-white">{propDeal.clientName}</h3>
-                    <span className="text-xs text-slate-400">• CPF: {propDeal.clientDocument}</span>
-                  </div>
+              return (
+                <div
+                  key={propDeal.id}
+                  className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xs space-y-4"
+                >
+                  {/* Header Info */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-300 font-extrabold text-xs border border-amber-500/30">
+                        {propDeal.code}
+                      </span>
+                      <h3 className="font-bold text-sm text-white">{getClientName(propDeal.clientId)}</h3>
+                    </div>
 
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold self-start sm:self-auto ${
-                      propDeal.status === "Aceita pelo Proprietário"
-                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                        : propDeal.status === "Contraproposta Enviada"
-                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                          : "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                    }`}
-                  >
-                    {propDeal.status}
-                  </span>
-                </div>
-
-                {/* Property & Value Breakdown Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-                  <div className="md:col-span-2 p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
-                      Imóvel Objeto da Negociação
-                    </span>
-                    <p className="font-bold text-white text-sm">
-                      <span className="text-amber-400 font-extrabold">{propDeal.propertyCode}</span>{" "}
-                      — {propDeal.propertyTitle}
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                      Corretor Responsável: {propDeal.brokerName}
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
-                      Valor Anunciado
-                    </span>
-                    <p className="text-slate-300 line-through font-semibold text-sm">
-                      {formatCurrency(propDeal.advertisedPrice)}
-                    </p>
-                    <span className="text-[10px] text-slate-400 block">Tabela oficial</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-amber-400 uppercase font-bold tracking-wider">
-                      Valor Proposto
-                    </span>
-                    <p className="text-amber-300 font-black text-base">
-                      {formatCurrency(propDeal.proposedPrice)}
-                    </p>
                     <span
-                      className={`text-[10px] font-bold ${difference < 0 ? "text-rose-400" : "text-emerald-400"}`}
+                      className={`px-3 py-1 rounded-full text-xs font-bold self-start sm:self-auto ${
+                        propDeal.status === "APPROVED"
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          : propDeal.status === "COUNTER_PROPOSED"
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            : "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                      }`}
                     >
-                      {diffPercent}% do valor pedido
+                      {statusDisplay}
                     </span>
                   </div>
-                </div>
 
-                {/* Payment Breakdown & Condition */}
-                <div className="p-3 bg-slate-850/60 rounded-xl border border-slate-800 text-xs">
-                  <span className="font-bold text-slate-200 block mb-1">
-                    Condição de Pagamento Apresentada:
-                  </span>
-                  <p className="text-slate-300">{propDeal.paymentMethodDescription}</p>
-                  {propDeal.counterProposalPrice && (
-                    <div className="mt-2 pt-2 border-t border-slate-750 text-amber-300">
-                      <strong>Contraproposta do Proprietário:</strong>{" "}
-                      {formatCurrency(propDeal.counterProposalPrice)} —{" "}
-                      {propDeal.counterProposalNotes}
+                  {/* Property & Value Breakdown Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+                    <div className="md:col-span-2 p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                        Imóvel
+                      </span>
+                      <p className="font-bold text-white text-sm">
+                        {getPropertyName(propDeal.propertyId)}
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                        Valor Anunciado
+                      </span>
+                      <p className="text-slate-300 line-through font-semibold text-sm">
+                        {formatCurrency(propDeal.advertisedPrice)}
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                      <span className="text-[10px] text-amber-400 uppercase font-bold tracking-wider">
+                        Valor Proposto
+                      </span>
+                      <p className="text-amber-300 font-black text-base">
+                        {formatCurrency(propDeal.proposedPrice)}
+                      </p>
+                      <span
+                        className={`text-[10px] font-bold ${difference < 0 ? "text-rose-400" : "text-emerald-400"}`}
+                      >
+                        {diffPercent}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Payment & Counter */}
+                  <div className="p-3 bg-slate-850/60 rounded-xl border border-slate-800 text-xs">
+                    <span className="font-bold text-slate-200 block mb-1">Condição de Pagamento:</span>
+                    <p className="text-slate-300">{propDeal.paymentDescription || "---"}</p>
+                    {propDeal.counterProposalPrice && (
+                      <div className="mt-2 pt-2 border-t border-slate-750 text-amber-300">
+                        <strong>Contraproposta:</strong> {formatCurrency(propDeal.counterProposalPrice)}
+                        {propDeal.counterProposalNotes && ` — ${propDeal.counterProposalNotes}`}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  {propDeal.status !== "APPROVED" && (
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                      <button
+                        onClick={() => {
+                          setProposalForCounter(propDeal);
+                          setCounterPrice(propDeal.proposedPrice + 100000);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
+                      >
+                        Enviar Contraproposta
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setProposalToClose(propDeal);
+                          setSaleForm({ paymentType: "Financiamento Bancário", contractNumber: "" });
+                        }}
+                        className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition-all"
+                      >
+                        <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                        Aprovar & Fechar
+                      </button>
                     </div>
                   )}
                 </div>
-
-                {/* Negotiation Timeline History */}
-                <div className="space-y-1.5 pt-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Histórico de Movimentações:
-                  </span>
-                  {propDeal.history.map((h, hIdx) => (
-                    <div key={hIdx} className="flex items-center gap-2 text-[11px] text-slate-300">
-                      <Clock className="w-3 h-3 text-slate-500 shrink-0" />
-                      <span className="text-slate-400 font-mono text-[10px]">{h.date}</span>
-                      <span className="font-semibold text-white">{h.author}:</span>
-                      <span className="text-slate-300">{h.action}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Proposal Actions */}
-                <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-slate-800">
-                  <button
-                    onClick={() => {
-                      setProposalForCounter(propDeal);
-                      setCounterPrice(propDeal.proposedPrice + 100000);
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
-                  >
-                    Enviar Contraproposta
-                  </button>
-
-                  <button
-                    onClick={() => setProposalToClose(propDeal)}
-                    className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition-all"
-                  >
-                    <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                    Aprovar & Fechar Venda
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       ) : (
-        /* Sales Closure Completed List */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {sales.map((sale) => (
-            <div
-              key={sale.id}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xs space-y-3 relative overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+          {salesLoading ? (
+            <div className="text-xs text-slate-400 py-8 text-center">Carregando vendas...</div>
+          ) : sales.length === 0 ? (
+            <div className="text-xs text-slate-400 py-8 text-center">Nenhuma venda registrada</div>
+          ) : (
+            sales.map((sale) => {
+              const commission = getSaleCommission(sale.id);
+              return (
+                <div
+                  key={sale.id}
+                  className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xs space-y-3 relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
 
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-extrabold text-xs border border-emerald-500/30">
-                  {sale.code}
-                </span>
-                <span className="text-[11px] text-slate-400 font-medium">
-                  {sale.saleDate.split("-").reverse().join("/")}
-                </span>
-              </div>
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-extrabold text-xs border border-emerald-500/30">
+                      {sale.code}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      {new Date(sale.saleDate).toLocaleDateString("pt-BR")}
+                    </span>
+                  </div>
 
-              <div>
-                <h4 className="font-bold text-sm text-white">{sale.propertyTitle}</h4>
-                <p className="text-xs text-amber-400 font-mono font-semibold">
-                  {sale.propertyCode}
-                </p>
-              </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-white">{getPropertyName(sale.propertyId)}</h4>
+                  </div>
 
-              <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Comprador:</span>
-                  <strong className="text-white">{sale.clientName}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Proprietário Vendedor:</span>
-                  <strong className="text-slate-200">{sale.ownerName}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Forma de Pagamento:</span>
-                  <strong className="text-emerald-400">{sale.paymentType}</strong>
-                </div>
-                <div className="flex justify-between pt-1 border-t border-slate-850">
-                  <span className="text-slate-400">Contrato:</span>
-                  <span className="font-mono text-slate-300 text-[11px]">
-                    {sale.contractNumber}
-                  </span>
-                </div>
-              </div>
+                  <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Comprador:</span>
+                      <strong className="text-white">{getClientName(sale.buyerClientId)}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Forma de Pagamento:</span>
+                      <strong className="text-emerald-400">{sale.paymentType}</strong>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-slate-850">
+                      <span className="text-slate-400">Contrato:</span>
+                      <span className="font-mono text-slate-300 text-[11px]">
+                        {sale.contractNumber || "---"}
+                      </span>
+                    </div>
+                  </div>
 
-              <div className="pt-2 flex items-center justify-between text-xs">
-                <div>
-                  <span className="text-[10px] text-slate-400 block">Valor Final de Venda</span>
-                  <span className="text-base font-black text-amber-400">
-                    {formatCurrency(sale.finalSalePrice)}
-                  </span>
+                  <div className="pt-2 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block">Valor Final</span>
+                      <span className="text-base font-black text-amber-400">
+                        {formatCurrency(sale.finalSalePrice)}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 block">Comissão (6%)</span>
+                      <span className="text-sm font-black text-emerald-400">
+                        {formatCurrency(commission)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block">Comissão Gerada (6%)</span>
-                  <span className="text-sm font-black text-emerald-400">
-                    {formatCurrency(sale.commissionTotal)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
-                <span>Corretor: {sale.brokerName}</span>
-                <span>Captador: {sale.captatorName}</span>
-              </div>
-            </div>
-          ))}
+              );
+            })
+          )}
         </div>
       )}
 
@@ -404,53 +426,56 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white">Cadastrar Nova Proposta Comercial</h3>
+              <h3 className="text-base font-bold text-white">Cadastrar Nova Proposta</h3>
               <button
                 onClick={() => setIsNewProposalModalOpen(false)}
                 className="text-slate-400 hover:text-white"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
+            {errorMessage && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex gap-2 text-xs text-red-300">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
             <form onSubmit={handleCreateProposal} className="space-y-3 text-xs">
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">
-                  Cliente Proponente *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Nome do cliente"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-300 block mb-1">CPF/CNPJ</label>
-                <input
-                  type="text"
-                  value={clientDoc}
-                  onChange={(e) => setClientDoc(e.target.value)}
-                  placeholder="000.000.000-00"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-300 block mb-1">
-                  Imóvel Pretendido *
-                </label>
+                <label className="font-semibold text-slate-300 block mb-1">Cliente *</label>
                 <select
-                  value={propertyCode}
-                  onChange={(e) => setPropertyCode(e.target.value)}
+                  value={newProposalForm.clientId}
+                  onChange={(e) =>
+                    setNewProposalForm((p) => ({ ...p, clientId: e.target.value }))
+                  }
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                  required
                 >
-                  {properties.map((p) => (
-                    <option key={p.id} value={p.code}>
-                      {p.code} — {p.title} (Anunciado: {formatCurrency(p.salePrice)})
+                  <option value="">Selecione um cliente...</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-300 block mb-1">Imóvel *</label>
+                <select
+                  value={newProposalForm.propertyId}
+                  onChange={(e) =>
+                    setNewProposalForm((p) => ({ ...p, propertyId: e.target.value }))
+                  }
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                  required
+                >
+                  <option value="">Selecione um imóvel...</option>
+                  {hookProperties.properties.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title} ({formatCurrency(p.salePrice)})
                     </option>
                   ))}
                 </select>
@@ -464,19 +489,27 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
                   <input
                     type="number"
                     required
-                    value={proposedPrice}
-                    onChange={(e) => setProposedPrice(Number(e.target.value))}
+                    value={newProposalForm.proposedPrice}
+                    onChange={(e) =>
+                      setNewProposalForm((p) => ({
+                        ...p,
+                        proposedPrice: Number(e.target.value),
+                      }))
+                    }
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-amber-300 font-bold"
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">
-                    Valor da Entrada (R$)
-                  </label>
+                  <label className="font-semibold text-slate-300 block mb-1">Entrada (R$)</label>
                   <input
                     type="number"
-                    value={downPayment}
-                    onChange={(e) => setDownPayment(Number(e.target.value))}
+                    value={newProposalForm.downPayment}
+                    onChange={(e) =>
+                      setNewProposalForm((p) => ({
+                        ...p,
+                        downPayment: Number(e.target.value),
+                      }))
+                    }
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
@@ -484,13 +517,17 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
 
               <div>
                 <label className="font-semibold text-slate-300 block mb-1">
-                  Forma de Pagamento / Condições Especiais
+                  Condições de Pagamento
                 </label>
                 <textarea
                   rows={2}
-                  value={paymentDesc}
-                  onChange={(e) => setPaymentDesc(e.target.value)}
-                  placeholder="Ex: Sinal de 20% na assinatura do CCV, saldo na escritura via financiamento..."
+                  value={newProposalForm.paymentDescription}
+                  onChange={(e) =>
+                    setNewProposalForm((p) => ({
+                      ...p,
+                      paymentDescription: e.target.value,
+                    }))
+                  }
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"
                 />
               </div>
@@ -505,9 +542,10 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+                  disabled={isModalLoading}
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold disabled:opacity-50"
                 >
-                  Registrar Proposta
+                  {isModalLoading ? "..." : "Registrar"}
                 </button>
               </div>
             </form>
@@ -515,7 +553,7 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
         </div>
       )}
 
-      {/* Modal: Fechamento de Venda Formal */}
+      {/* Modal: Sale Closure */}
       {proposalToClose && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
@@ -523,77 +561,71 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
               <ShieldCheck className="w-6 h-6" />
               <div>
                 <h3 className="text-base font-bold text-white">Efetivar Fechamento de Venda</h3>
-                <p className="text-xs text-slate-400">Transição do imóvel para status 'Vendido'</p>
               </div>
             </div>
 
             <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-1.5">
-              <p className="font-bold text-white">{proposalToClose.propertyTitle}</p>
+              <p className="font-bold text-white">{getPropertyName(proposalToClose.propertyId)}</p>
               <p className="text-amber-400 font-bold">
                 Valor Final:{" "}
                 {formatCurrency(
                   proposalToClose.counterProposalPrice || proposalToClose.proposedPrice
                 )}
               </p>
-              <p className="text-slate-400">Comprador: {proposalToClose.clientName}</p>
+              <p className="text-slate-400">Comprador: {getClientName(proposalToClose.clientId)}</p>
             </div>
+
+            {errorMessage && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex gap-2 text-xs text-red-300">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             <form onSubmit={handleConfirmSaleClosure} className="space-y-3 text-xs">
               <div>
                 <label className="font-semibold text-slate-300 block mb-1">
-                  Forma de Pagamento Definitiva
+                  Forma de Pagamento
                 </label>
                 <select
-                  value={salePaymentType}
-                  onChange={(e) => setSalePaymentType(e.target.value as any)}
+                  value={saleForm.paymentType}
+                  onChange={(e) =>
+                    setSaleForm((p) => ({ ...p, paymentType: e.target.value }))
+                  }
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                 >
                   <option value="Financiamento Bancário">Financiamento Bancário</option>
                   <option value="À Vista TED/PIX">À Vista TED/PIX</option>
-                  <option value="Parcelamento Direto">Parcelamento Direto com Proprietário</option>
-                  <option value="Permuta + Saldo">Permuta de Imóvel + Saldo em Dinheiro</option>
+                  <option value="Parcelamento Direto">Parcelamento Direto</option>
+                  <option value="Permuta">Permuta</option>
                 </select>
               </div>
 
-              {salePaymentType === "Financiamento Bancário" && (
-                <div>
-                  <label className="font-semibold text-slate-300 block mb-1">
-                    Banco Concessor do Financiamento
-                  </label>
-                  <input
-                    type="text"
-                    value={saleBank}
-                    onChange={(e) => setSaleBank(e.target.value)}
-                    placeholder="Ex: Itaú Private / Caixa Econômica / Santander"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
-                  />
-                </div>
-              )}
-
               <div>
                 <label className="font-semibold text-slate-300 block mb-1">
-                  Número do Contrato / CCV
+                  Número do Contrato / CCV *
                 </label>
                 <input
                   type="text"
                   required
-                  value={contractNumber}
-                  onChange={(e) => setContractNumber(e.target.value)}
+                  value={saleForm.contractNumber}
+                  onChange={(e) =>
+                    setSaleForm((p) => ({ ...p, contractNumber: e.target.value }))
+                  }
+                  placeholder="CCV-SENA-2026/001"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
                 />
               </div>
 
               <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs">
-                Ao confirmar, o status do imóvel será automaticamente alterado para{" "}
-                <strong>Vendido</strong> e a comissão de{" "}
+                Ao confirmar, a venda será criada com comissão de{" "}
                 <strong>
                   6% (
                   {formatCurrency(
                     (proposalToClose.counterProposalPrice || proposalToClose.proposedPrice) * 0.06
                   )}
                   )
-                </strong>{" "}
-                será distribuída na aba de comissões.
+                </strong>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
@@ -606,9 +638,10 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black"
+                  disabled={isModalLoading}
+                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black disabled:opacity-50"
                 >
-                  Confirmar Venda & Atualizar Imóvel
+                  {isModalLoading ? "..." : "Confirmar Venda"}
                 </button>
               </div>
             </form>
@@ -616,18 +649,31 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
         </div>
       )}
 
-      {/* Modal: Contraproposta */}
+      {/* Modal: Counter Proposal */}
       {proposalForCounter && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-white">
-              Registrar Contraproposta do Proprietário
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-white">Enviar Contraproposta</h3>
+              <button
+                onClick={() => setProposalForCounter(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {errorMessage && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex gap-2 text-xs text-red-300">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             <form onSubmit={handleConfirmCounter} className="space-y-3 text-xs">
               <div>
                 <label className="font-semibold text-slate-300 block mb-1">
-                  Novo Valor da Contraproposta (R$) *
+                  Novo Valor (R$) *
                 </label>
                 <input
                   type="number"
@@ -640,14 +686,14 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
 
               <div>
                 <label className="font-semibold text-slate-300 block mb-1">
-                  Condições & Justificativa do Proprietário
+                  Observações *
                 </label>
                 <textarea
                   rows={3}
                   required
                   value={counterNotes}
                   onChange={(e) => setCounterNotes(e.target.value)}
-                  placeholder="Ex: Proprietário aceita o valor se mantiver a mobília planejada e fechamento em até 30 dias..."
+                  placeholder="Justificativa do proprietário..."
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white"
                 />
               </div>
@@ -662,9 +708,10 @@ export const ProposalsSalesModule: React.FC<ProposalsSalesModuleProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold"
+                  disabled={isModalLoading}
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold disabled:opacity-50"
                 >
-                  Salvar Contraproposta
+                  {isModalLoading ? "..." : "Enviar"}
                 </button>
               </div>
             </form>

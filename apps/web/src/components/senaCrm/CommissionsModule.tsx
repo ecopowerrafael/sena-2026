@@ -11,13 +11,15 @@ import {
   Sparkles,
   Sliders,
 } from "lucide-react";
-import { CommissionDistribution } from "../../types/senaCrm";
+import { useCommissions } from "../../hooks/useCommissions";
+import { useSales } from "../../hooks/useSales";
 
-interface CommissionsModuleProps {
-  commissions: CommissionDistribution[];
-}
+interface CommissionsModuleProps {}
 
-export const CommissionsModule: React.FC<CommissionsModuleProps> = ({ commissions }) => {
+export const CommissionsModule: React.FC<CommissionsModuleProps> = () => {
+  const { commissions, isLoading } = useCommissions();
+  const { sales } = useSales();
+
   // Interactive Simulator State
   const [simSaleValue, setSimSaleValue] = useState<number>(5000000);
   const [simTotalCommissionPct, setSimTotalCommissionPct] = useState<number>(6.0);
@@ -41,13 +43,8 @@ export const CommissionsModule: React.FC<CommissionsModuleProps> = ({ commission
   const simCaptatorVal = (simTotalCommissionVal * simCaptatorPct) / 100;
   const simAttendantVal = (simTotalCommissionVal * simAttendantPct) / 100;
 
-  // Global Totals
-  const totalCommissionValSum = commissions.reduce((acc, c) => acc + c.totalCommissionValue, 0);
-  const agencyValSum = commissions.reduce((acc, c) => acc + c.agencyShareValue, 0);
-  const brokersValSum = commissions.reduce(
-    (acc, c) => acc + c.captatorShareValue + c.attendantBrokerShareValue,
-    0
-  );
+  // Global Totals from real backend data
+  const totalCommissionValSum = commissions.reduce((acc, c) => acc + c.totalValue, 0);
 
   return (
     <div className="space-y-6 pb-12">
@@ -188,76 +185,74 @@ export const CommissionsModule: React.FC<CommissionsModuleProps> = ({ commission
         </div>
       </div>
 
-      {/* Real Historical Distributions Table */}
+      {/* Real Commissions Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xs space-y-3 p-5">
         <div className="flex items-center justify-between pb-2 border-b border-slate-800">
           <div>
             <h3 className="text-sm font-bold text-white">
-              Relatório de Comissões e Repasses Cadastrados
+              Comissões & Splits de Venda
             </h3>
-            <p className="text-xs text-slate-400">Detalhamento por venda concluída ou prevista</p>
+            <p className="text-xs text-slate-400">Distribuição por recipiente (Agência, Gerente, Captador, Atendimento)</p>
           </div>
-          <span className="text-xs text-slate-400">{commissions.length} registros</span>
+          <span className="text-xs text-slate-400">{commissions.length} vendas</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/80 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[10px]">
-              <tr>
-                <th className="py-3 px-3">Venda / Imóvel</th>
-                <th className="py-3 px-3">VGV Venda</th>
-                <th className="py-3 px-3">Comissão Total (6%)</th>
-                <th className="py-3 px-3">Imobiliária</th>
-                <th className="py-3 px-3">Gerência</th>
-                <th className="py-3 px-3">Captador</th>
-                <th className="py-3 px-3">Atendimento</th>
-                <th className="py-3 px-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800 text-slate-200">
-              {commissions.map((c, idx) => (
-                <tr key={idx} className="hover:bg-slate-850/50 transition-colors">
-                  <td className="py-3 px-3">
-                    <span className="font-bold text-white block">{c.saleCode}</span>
-                    <span className="text-[11px] text-slate-400 truncate block max-w-[200px]">
-                      {c.propertyTitle}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 font-semibold text-slate-300">
-                    {formatCurrency(c.saleValue)}
-                  </td>
-                  <td className="py-3 px-3 font-bold text-amber-400">
-                    {formatCurrency(c.totalCommissionValue)}
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">
-                    {formatCurrency(c.agencyShareValue)} ({c.agencySharePercentage}%)
-                  </td>
-                  <td className="py-3 px-3 text-slate-300">
-                    {formatCurrency(c.managerShareValue)} ({c.managerSharePercentage}%)
-                  </td>
-                  <td className="py-3 px-3 text-emerald-400 font-semibold">
-                    {formatCurrency(c.captatorShareValue)} ({c.captatorSharePercentage}%)
-                  </td>
-                  <td className="py-3 px-3 text-purple-400 font-semibold">
-                    {formatCurrency(c.attendantBrokerShareValue)} (
-                    {c.attendantBrokerSharePercentage}%)
-                  </td>
-                  <td className="py-3 px-3">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        c.status === "Quitada"
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                          : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                      }`}
-                    >
-                      {c.status}
-                    </span>
-                  </td>
+        {isLoading ? (
+          <div className="text-xs text-slate-400 py-8 text-center">Carregando comissões...</div>
+        ) : commissions.length === 0 ? (
+          <div className="text-xs text-slate-400 py-8 text-center">Nenhuma comissão registrada</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/80 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="py-3 px-3">Venda ID</th>
+                  <th className="py-3 px-3">Valor Base</th>
+                  <th className="py-3 px-3">Total (%)</th>
+                  <th className="py-3 px-3">Total (R$)</th>
+                  <th className="py-3 px-3">Splits</th>
+                  <th className="py-3 px-3">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-800 text-slate-200">
+                {commissions.map((c) => (
+                  <tr key={c.id} className="hover:bg-slate-850/50 transition-colors">
+                    <td className="py-3 px-3">
+                      <span className="font-bold text-white text-[11px] font-mono">{c.saleId}</span>
+                    </td>
+                    <td className="py-3 px-3 font-semibold text-slate-300">
+                      {formatCurrency(c.baseValue)}
+                    </td>
+                    <td className="py-3 px-3 font-bold text-amber-400">
+                      {c.totalPercentage}%
+                    </td>
+                    <td className="py-3 px-3 font-bold text-emerald-400">
+                      {formatCurrency(c.totalValue)}
+                    </td>
+                    <td className="py-3 px-3 text-[10px] space-y-0.5">
+                      {c.splits.map((split) => (
+                        <div key={split.id} className="text-slate-400">
+                          <span className="text-slate-300 font-semibold">{split.recipientType}</span>: {split.percentage}% ({formatCurrency(split.amount)})
+                        </div>
+                      ))}
+                    </td>
+                    <td className="py-3 px-3">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          c.status === "PAID"
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                            : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                        }`}
+                      >
+                        {c.status === "PAID" ? "Paga" : "Prevista"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

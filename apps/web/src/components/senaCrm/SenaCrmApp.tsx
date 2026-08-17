@@ -163,21 +163,8 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
     setProperties(apiProperties);
   }, [apiProperties]);
 
-  useEffect(() => {
-    setVisits(apiVisits);
-  }, [apiVisits]);
-
-  useEffect(() => {
-    setProposals(apiProposals);
-  }, [apiProposals]);
-
-  useEffect(() => {
-    setSales(apiSales);
-  }, [apiSales]);
-
-  useEffect(() => {
-    setCommissions(apiCommissions);
-  }, [apiCommissions]);
+  // API data is now consumed directly by modules via hooks
+  // Legacy state syncing removed - modules access real data from hooks
 
   // Handlers: Leads
   const handleAddLead = async (newLead: Partial<Lead>) => {
@@ -209,124 +196,7 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
   // Visits handled by useVisits hook
 
   // Handlers: Proposals & Sales
-  const handleAddProposal = (newProp: Partial<Proposal>) => {
-    const fullProposal: Proposal = {
-      id: `propdeal-${Date.now()}`,
-      code: newProp.code || `PROP-2026-0${proposals.length + 50}`,
-      clientName: newProp.clientName || "Cliente",
-      clientDocument: newProp.clientDocument || "000.000.000-00",
-      propertyCode: newProp.propertyCode || "SENA-801",
-      propertyTitle: newProp.propertyTitle || "Imóvel",
-      brokerName: newProp.brokerName || "Rodrigo Mendonça",
-      advertisedPrice: newProp.advertisedPrice || 5000000,
-      proposedPrice: newProp.proposedPrice || 4800000,
-      downPayment: newProp.downPayment || 1000000,
-      installmentsCount: 1,
-      installmentsValue: (newProp.proposedPrice || 4800000) - (newProp.downPayment || 1000000),
-      paymentMethodDescription: newProp.paymentMethodDescription || "À vista",
-      status: "Em Análise",
-      createdAt: new Date().toISOString().split("T")[0],
-      updatedAt: new Date().toISOString().split("T")[0],
-      history: newProp.history || [],
-    };
-    setProposals([fullProposal, ...proposals]);
-  };
-
-  const handleSendCounterProposal = (proposalId: string, counterPrice: number, notes: string) => {
-    setProposals((prev) =>
-      prev.map((p) =>
-        p.id === proposalId
-          ? {
-              ...p,
-              counterProposalPrice: counterPrice,
-              counterProposalNotes: notes,
-              status: "Contraproposta Enviada",
-              history: [
-                ...p.history,
-                {
-                  date: `${new Date().toISOString().split("T")[0]} 14:00`,
-                  author: "Gerência SENA / Proprietário",
-                  action: `Contraproposta no valor de R$ ${counterPrice.toLocaleString("pt-BR")}. Obs: ${notes}`,
-                },
-              ],
-            }
-          : p
-      )
-    );
-  };
-
-  const handleApproveProposal = (proposalId: string, finalSaleDetails: Partial<SaleClosure>) => {
-    // 1. Mark proposal as accepted
-    setProposals((prev) =>
-      prev.map((p) =>
-        p.id === proposalId
-          ? {
-              ...p,
-              status: "Aceita pelo Proprietário",
-              history: [
-                ...p.history,
-                {
-                  date: `${new Date().toISOString().split("T")[0]} 16:30`,
-                  author: "Diretoria SENA",
-                  action: "Proposta aprovada com sucesso e venda homologada.",
-                },
-              ],
-            }
-          : p
-      )
-    );
-
-    // 2. Create SaleClosure
-    const fullSale: SaleClosure = {
-      id: `sale-${Date.now()}`,
-      code: finalSaleDetails.code || `VENDA-2026-0${sales.length + 20}`,
-      clientName: finalSaleDetails.clientName || "Comprador",
-      ownerName: finalSaleDetails.ownerName || "Vendedor",
-      propertyCode: finalSaleDetails.propertyCode || "SENA-801",
-      propertyTitle: finalSaleDetails.propertyTitle || "Imóvel",
-      brokerName: finalSaleDetails.brokerName || "Rodrigo Mendonça",
-      captatorName: finalSaleDetails.captatorName || "Rodrigo Mendonça",
-      finalSalePrice: finalSaleDetails.finalSalePrice || 5000000,
-      saleDate: new Date().toISOString().split("T")[0],
-      paymentType: finalSaleDetails.paymentType || "Financiamento Bancário",
-      bankFinancing: finalSaleDetails.bankFinancing,
-      documentationStatus: "Contrato Assinado",
-      contractNumber: finalSaleDetails.contractNumber || "CCV-SENA-2026",
-      commissionTotal: finalSaleDetails.commissionTotal || 300000,
-    };
-    setSales([fullSale, ...sales]);
-
-    // 3. Mark property as 'Vendido'
-    setProperties((prev) =>
-      prev.map((prop) =>
-        prop.code === fullSale.propertyCode ? { ...prop, status: "Vendido" } : prop
-      )
-    );
-
-    // 4. Create Commission Distribution (40% imobiliária, 10% gerente, 25% captador, 25% atendente)
-    const commTotal = fullSale.commissionTotal;
-    const newCommission: CommissionDistribution = {
-      saleCode: fullSale.code,
-      propertyTitle: fullSale.propertyTitle,
-      saleValue: fullSale.finalSalePrice,
-      totalCommissionPercentage: 6.0,
-      totalCommissionValue: commTotal,
-      agencySharePercentage: 40.0,
-      agencyShareValue: commTotal * 0.4,
-      managerSharePercentage: 10.0,
-      managerShareValue: commTotal * 0.1,
-      captatorSharePercentage: 25.0,
-      captatorShareValue: commTotal * 0.25,
-      attendantBrokerSharePercentage: 25.0,
-      attendantBrokerShareValue: commTotal * 0.25,
-      negotiationSharePercentage: 0,
-      negotiationShareValue: 0,
-      partnerSharePercentage: 0,
-      partnerShareValue: 0,
-      status: "Prevista",
-    };
-    setCommissions([newCommission, ...commissions]);
-  };
+  // Proposals & Sales handled by useProposals/useSales hooks
 
   // Handlers: Lots
   const handleUpdateLotStatus = (
@@ -449,18 +319,11 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
 
           {(currentTab === "propostas" || currentTab === "vendas") && (
             <ProposalsSalesModule
-              proposals={proposals}
-              sales={sales}
               properties={properties}
-              brokers={brokers}
-              leads={leads}
-              onAddProposal={handleAddProposal}
-              onApproveProposal={handleApproveProposal}
-              onSendCounterProposal={handleSendCounterProposal}
             />
           )}
 
-          {currentTab === "equipe-comissoes" && <CommissionsModule commissions={commissions} />}
+          {currentTab === "equipe-comissoes" && <CommissionsModule />}
 
           {(currentTab === "locacoes-contratos" ||
             currentTab === "locacoes-repasses" ||

@@ -228,7 +228,7 @@ export class ProposalsService {
               },
               {
                 tenantId: auth.tenantId,
-                recipientType: "ATTENDANCE",
+                recipientType: "ATTENDANT_BROKER",
                 recipientId: auth.userId,
                 percentage: 25,
                 amount: commissionValue * 0.25,

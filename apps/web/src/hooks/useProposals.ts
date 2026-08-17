@@ -36,6 +36,7 @@ export interface CreateProposalData {
 export interface UpdateProposalData {
   proposedPrice?: number;
   downPayment?: number;
+  counterProposalPrice?: number;
   counterProposalNotes?: string;
   status?: string;
 }

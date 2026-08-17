@@ -43,7 +43,7 @@ export const VisitsModule: React.FC<VisitsModuleProps> = ({ properties }) => {
   const [feedbackForm, setFeedbackForm] = useState({
     feedback: "",
     impression: "",
-    status: "COMPLETED" as const,
+    status: "COMPLETED" as "COMPLETED" | "CANCELLED" | "NO_SHOW",
   });
 
   const handleScheduleSubmit = async (e: React.FormEvent) => {

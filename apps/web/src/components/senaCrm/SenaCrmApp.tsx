@@ -329,21 +329,7 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
             currentTab === "locacoes-repasses" ||
             currentTab === "locacoes-vistorias" ||
             currentTab === "locacoes-manutencoes") && (
-            <RentalsModule
-              rentalContracts={rentalContracts}
-              rentalPayouts={rentalPayouts}
-              inspections={inspections}
-              maintenances={maintenances}
-              initialSubTab={
-                currentTab === "locacoes-repasses"
-                  ? "repasses"
-                  : currentTab === "locacoes-vistorias"
-                    ? "vistorias"
-                    : currentTab === "locacoes-manutencoes"
-                      ? "manutencoes"
-                      : "contratos"
-              }
-            />
+            <RentalsModule />
           )}
 
           {(currentTab === "loteamentos-empreendimentos" ||

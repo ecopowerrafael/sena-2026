@@ -271,15 +271,7 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
         {/* Dynamic Workspace Container */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
           {currentTab === "dashboard" && (
-            <DashboardModule
-              leads={leads}
-              properties={properties}
-              brokers={brokers}
-              rentalContracts={rentalContracts}
-              sales={sales}
-              developments={developments}
-              onNavigateTab={setCurrentTab}
-            />
+            <DashboardModule />
           )}
 
           {(currentTab === "leads" || currentTab === "funil") && (

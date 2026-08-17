@@ -328,7 +328,7 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
             currentTab === "loteamentos-espelho" ||
             currentTab === "loteamentos-simulador" ||
             currentTab === "loteamentos-reservas") && (
-            <DevelopmentsLotsModule developmentId="" />
+            <DevelopmentsLotsModule />
           )}
 
           {(currentTab === "equipe-corretores" || currentTab === "equipe-ranking") && (
@@ -336,15 +336,7 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
           )}
 
           {(currentTab === "sistema-usuarios" || currentTab === "sistema-configuracoes") && (
-            <ReportsModule
-              sales={sales}
-              properties={properties}
-              visits={visits}
-              commissions={commissions}
-              rentalPayouts={rentalPayouts}
-              developments={developments}
-              brokers={brokers}
-            />
+            <ReportsModule />
           )}
         </main>
       </div>

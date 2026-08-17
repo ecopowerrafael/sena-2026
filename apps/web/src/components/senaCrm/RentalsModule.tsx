@@ -9,22 +9,28 @@ import {
 } from "lucide-react";
 import { useLeases } from "../../hooks/useLeases";
 import { useCharges } from "../../hooks/useCharges";
+import { useInspections } from "../../hooks/useInspections";
+import { useMaintenanceRequests } from "../../hooks/useMaintenanceRequests";
 
 export const RentalsModule: React.FC = () => {
   const { leases, loading: leasesLoading, error: leasesError, loadLeases } = useLeases();
   const { charges, payouts, loading: chargesLoading, loadCharges, loadPayouts } = useCharges();
+  const { inspections, loading: inspectionsLoading, loadInspections } = useInspections();
+  const { requests: maintenance, loading: maintenanceLoading, loadRequests } = useMaintenanceRequests();
   const [selectedLeaseId, setSelectedLeaseId] = useState<string | null>(null);
-  const [subTab, setSubTab] = useState<"contratos" | "cobranças" | "repasses">("contratos");
+  const [subTab, setSubTab] = useState<"contratos" | "cobranças" | "repasses" | "vistorias" | "manutenção">("contratos");
 
   const selectedLease = selectedLeaseId ? leases.find((l) => l.id === selectedLeaseId) : null;
 
-  // Load charges and payouts when lease is selected
+  // Load charges, payouts, inspections, maintenance when lease is selected
   React.useEffect(() => {
     if (selectedLeaseId) {
       loadCharges(selectedLeaseId);
       loadPayouts(selectedLeaseId);
+      loadInspections(selectedLeaseId);
+      loadRequests(selectedLeaseId);
     }
-  }, [selectedLeaseId, loadCharges, loadPayouts]);
+  }, [selectedLeaseId, loadCharges, loadPayouts, loadInspections, loadRequests]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -78,12 +84,12 @@ export const RentalsModule: React.FC = () => {
       </div>
 
       {/* Sub-Tabs */}
-      <div className="flex gap-2 border-b border-slate-800">
-        {(["contratos", "cobranças", "repasses"] as const).map((tab) => (
+      <div className="flex gap-2 border-b border-slate-800 overflow-x-auto">
+        {(["contratos", "cobranças", "repasses", "vistorias", "manutenção"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setSubTab(tab)}
-            className={`px-4 py-2 font-semibold text-sm border-b-2 transition ${
+            className={`px-4 py-2 font-semibold text-sm border-b-2 transition whitespace-nowrap ${
               subTab === tab
                 ? "border-amber-400 text-amber-400"
                 : "border-transparent text-slate-400 hover:text-white"
@@ -92,6 +98,8 @@ export const RentalsModule: React.FC = () => {
             {tab === "contratos" && "📋 Contratos"}
             {tab === "cobranças" && "💰 Cobranças"}
             {tab === "repasses" && "🏦 Repasses"}
+            {tab === "vistorias" && "🔍 Vistorias"}
+            {tab === "manutenção" && "🔧 Manutenção"}
           </button>
         ))}
       </div>
@@ -255,6 +263,125 @@ export const RentalsModule: React.FC = () => {
                       <span>Líquido p/ proprietário:</span>
                       <span>{formatCurrency(payout.netAmount)}</span>
                     </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VISTORIAS TAB */}
+      {subTab === "vistorias" && (
+        <div className="space-y-4">
+          {!selectedLease ? (
+            <div className="text-center py-8 text-slate-400">
+              Selecione um contrato para ver vistorias
+            </div>
+          ) : inspectionsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
+            </div>
+          ) : inspections.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              Nenhuma vistoria cadastrada
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {inspections.map((inspection) => (
+                <div
+                  key={inspection.id}
+                  className="p-4 bg-slate-800 border border-slate-700 rounded-lg"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-semibold text-white">
+                        {inspection.inspectionType === "ENTRY"
+                          ? "Vistoria de Entrada"
+                          : inspection.inspectionType === "EXIT"
+                            ? "Vistoria de Saída"
+                            : "Vistoria Periódica"}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {new Date(inspection.createdAt).toLocaleDateString("pt-BR")}
+                        {inspection.inspectorName && ` • Inspetor: ${inspection.inspectorName}`}
+                      </p>
+                    </div>
+                  </div>
+                  {inspection.notes && (
+                    <p className="text-sm text-slate-300 mb-3">{inspection.notes}</p>
+                  )}
+                  {inspection.items && inspection.items.length > 0 && (
+                    <div className="space-y-2">
+                      {inspection.items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="text-xs p-2 bg-slate-900/50 rounded border border-slate-600"
+                        >
+                          <p className="text-white">{item.description}</p>
+                          <p className="text-slate-400">Status: {item.status}</p>
+                          {item.notes && <p className="text-slate-500 mt-1">{item.notes}</p>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MANUTENÇÃO TAB */}
+      {subTab === "manutenção" && (
+        <div className="space-y-4">
+          {!selectedLease ? (
+            <div className="text-center py-8 text-slate-400">
+              Selecione um contrato para ver manutenção
+            </div>
+          ) : maintenanceLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
+            </div>
+          ) : maintenance.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              Nenhuma solicitação de manutenção
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {maintenance.map((request) => (
+                <div
+                  key={request.id}
+                  className="p-4 bg-slate-800 border border-slate-700 rounded-lg"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-semibold text-white">{request.description}</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {new Date(request.createdAt).toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded border ${
+                      request.status === "REQUESTED"
+                        ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
+                        : request.status === "QUOTED"
+                          ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
+                          : request.status === "APPROVED"
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                            : request.status === "COMPLETED"
+                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                              : "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                    }`}>
+                      {request.status === "REQUESTED"
+                        ? "Solicitado"
+                        : request.status === "QUOTED"
+                          ? "Orçado"
+                          : request.status === "APPROVED"
+                            ? "Aprovado"
+                            : request.status === "COMPLETED"
+                              ? "Concluído"
+                              : "Cancelado"}
+                    </span>
                   </div>
                 </div>
               ))}

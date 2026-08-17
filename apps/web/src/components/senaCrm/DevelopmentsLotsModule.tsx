@@ -9,12 +9,17 @@ import {
   Plus,
 } from "lucide-react";
 import { useLots } from "../../hooks/useLots";
+import { useDevelopments } from "../../hooks/useDevelopments";
+import { useLotProposals } from "../../hooks/useLotProposals";
 import type { LotDto, LotSimulationDto } from "@sena/shared";
 
-export const DevelopmentsLotsModule: React.FC<{ developmentId?: string }> = ({
-  developmentId = "",
-}) => {
+export const DevelopmentsLotsModule: React.FC = () => {
+  const { developments, loading: devsLoading } = useDevelopments();
   const { lots, loading, error, loadLots, reserveLot, simulateLot } = useLots();
+  const { proposals, loadProposals, createProposal, approveProposal } = useLotProposals();
+
+  const [selectedDevelopmentId, setSelectedDevelopmentId] = useState<string>("");
+  const [subTab, setSubTab] = useState<"lotes" | "propostas">("lotes");
   const [selectedLot, setSelectedLot] = useState<LotDto | null>(null);
   const [showReservationForm, setShowReservationForm] = useState(false);
   const [showSimulator, setShowSimulator] = useState(false);
@@ -29,10 +34,11 @@ export const DevelopmentsLotsModule: React.FC<{ developmentId?: string }> = ({
 
   // Load lots when development changes
   React.useEffect(() => {
-    if (developmentId) {
-      loadLots(developmentId);
+    if (selectedDevelopmentId) {
+      loadLots(selectedDevelopmentId);
+      loadProposals(selectedDevelopmentId);
     }
-  }, [developmentId, loadLots]);
+  }, [selectedDevelopmentId, loadLots, loadProposals]);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -123,29 +129,53 @@ export const DevelopmentsLotsModule: React.FC<{ developmentId?: string }> = ({
     }
   };
 
-  if (!developmentId) {
-    return (
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
-        <p className="text-slate-400">Selecione um empreendimento para visualizar os lotes</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center justify-between gap-4 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 mb-1">
-            <Trees className="w-4 h-4" />
-            Empreendimentos e Lotes
-          </div>
-          <h2 className="text-lg font-bold text-white">Espelho de Vendas</h2>
-          <p className="text-xs text-slate-400">
-            {lots.length} lote{lots.length !== 1 ? "s" : ""} cadastrado{lots.length !== 1 ? "s" : ""}
-          </p>
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xs">
+        <div className="flex items-center gap-2 text-xs font-semibold text-blue-400 mb-2">
+          <Trees className="w-4 h-4" />
+          Empreendimentos e Lotes
         </div>
+        <h2 className="text-lg font-bold text-white mb-4">Espelho de Vendas</h2>
+
+        {/* Development Selector */}
+        <select
+          value={selectedDevelopmentId}
+          onChange={(e) => {
+            setSelectedDevelopmentId(e.target.value);
+            setSelectedLot(null);
+          }}
+          className="w-full p-2 bg-slate-800 border border-slate-700 rounded text-white"
+        >
+          <option value="">Selecione um empreendimento...</option>
+          {developments.map((dev) => (
+            <option key={dev.id} value={dev.id}>
+              {dev.name}
+            </option>
+          ))}
+        </select>
       </div>
+
+      {/* Sub-Tabs */}
+      {selectedDevelopmentId && (
+        <div className="flex gap-2 border-b border-slate-800">
+          {(["lotes", "propostas"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setSubTab(tab)}
+              className={`px-4 py-2 font-semibold text-sm border-b-2 transition ${
+                subTab === tab
+                  ? "border-blue-400 text-blue-400"
+                  : "border-transparent text-slate-400 hover:text-white"
+              }`}
+            >
+              {tab === "lotes" && "📍 Lotes"}
+              {tab === "propostas" && "📋 Propostas"}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Error & Loading */}
       {error && (
@@ -155,16 +185,22 @@ export const DevelopmentsLotsModule: React.FC<{ developmentId?: string }> = ({
         </div>
       )}
 
-      {/* Lots Grid */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
-        </div>
-      ) : lots.length === 0 ? (
-        <div className="text-center py-8 text-slate-400">
-          Nenhum lote cadastrado neste empreendimento
-        </div>
-      ) : (
+      {/* LOTES TAB */}
+      {subTab === "lotes" && (
+        <>
+          {!selectedDevelopmentId ? (
+            <div className="text-center py-8 text-slate-400">
+              Selecione um empreendimento para ver os lotes
+            </div>
+          ) : loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+            </div>
+          ) : lots.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              Nenhum lote cadastrado neste empreendimento
+            </div>
+          ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {lots.map((lot) => (
             <button
@@ -367,6 +403,50 @@ export const DevelopmentsLotsModule: React.FC<{ developmentId?: string }> = ({
               </div>
             )}
           </div>
+        </div>
+      )}
+        </>
+      )}
+
+      {/* PROPOSTAS TAB */}
+      {subTab === "propostas" && (
+        <div className="space-y-4">
+          {!selectedDevelopmentId ? (
+            <div className="text-center py-8 text-slate-400">
+              Selecione um empreendimento para ver propostas
+            </div>
+          ) : loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+            </div>
+          ) : proposals.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              Nenhuma proposta de venda
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {proposals.map((proposal) => (
+                <div
+                  key={proposal.id}
+                  className="p-4 bg-slate-800 border border-slate-700 rounded-lg"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-semibold text-white">
+                        Lote {proposal.lotId} - {formatCurrency(proposal.proposedPrice)}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Entrada: {formatCurrency(proposal.entryAmount)} • {proposal.installments}x
+                      </p>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded border bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+                      Análise
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

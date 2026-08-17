@@ -6,45 +6,54 @@
 
 ---
 
-## Etapa 11-D — IMPLEMENTADA (Validação funcional pendente)
+## Etapa 11-D — IMPLEMENTAÇÃO AVANÇADA (Validação funcional pendente)
 
 ### ✅ IMPLEMENTAÇÃO CONFIRMADA
 
 **Controllers + Módulos:**
 - ✓ rentals.controller.ts — leases, charges, inspections, maintenance endpoints
 - ✓ developments.controller.ts — developments, lots, proposals, reservations endpoints
-- ✓ analytics.controller.ts — dashboard metrics (10 KPIs em paralelo)
-- ✓ RentalsModule registrado e integrado
-- ✓ DevelopmentsModule registrado e integrado  
+- ✓ analytics.controller.ts — dashboard metrics (10 KPIs) + reports com filtros
+- ✓ RentalsModule registrado e integrado (com vistorias + manutenção)
+- ✓ DevelopmentsLotsModule registrado e integrado (com seletor + propostas)
+- ✓ ReportsModule registrado e integrado (com 5 abas de relatórios)
 - ✓ AnalyticsModule registrado e integrado
 
-**Hooks Frontend:**
+**Hooks Frontend (10 hooks integrados):**
 - ✓ useLeases: GET/POST/PATCH /rentals/leases (+ tenants/owners)
 - ✓ useCharges: GET/POST charges, recordPayment, listPayouts reais
+- ✓ useInspections: GET/POST /rentals/inspections (entry/periodic/exit)
+- ✓ useMaintenanceRequests: GET/POST /rentals/maintenance (requested→quoted→approved→completed)
 - ✓ useLots: GET lots, POST reserve (atômico), simulate
+- ✓ useDevelopments: GET /developments (seletor de empreendimento)
+- ✓ useLotProposals: GET/POST /developments/proposals, approve
 - ✓ useDashboardAnalytics: GET /analytics/dashboard (10 KPIs)
+- ✓ useReports: GET /analytics/reports com filtros opcionais
 
 **Módulos Integrados (Sem Mocks):**
-- ✓ RentalsModule: contratos reais + cobranças + repasses automáticos
-- ✓ DevelopmentsLotsModule: lotes com reserva dupla-prevenção, simulador real
+- ✓ RentalsModule (5 abas): contratos + cobranças + repasses + vistorias + manutenção reais
+- ✓ DevelopmentsLotsModule (2 abas): lotes com seletor de empreendimento + propostas reais
 - ✓ DashboardModule: 10 KPIs, ranking corretores, charts reais
+- ✓ ReportsModule (5 abas): vendas, captações, visitas, locação, loteamentos com dados reais
 
 **Atomicity & Concurrency:**
 - ✓ useLots.reserve → POST /developments/lots/reserve (Prisma $transaction)
 - ✓ Double-reservation prevention via transaction + status validation
 - ✓ Charge payment → autorecalc repayment (charges.service:123)
+- ✓ Maintenance workflow: REQUESTED → QUOTED → APPROVED → COMPLETED
 
 **Código Limpo:**
-- ✓ Removidos props mock: rentalContracts, rentalPayouts, developments, sales
-- ✓ RentalsModule props → hooks
-- ✓ DevelopmentsLotsModule props → useLots
-- ✓ DashboardModule props → useDashboardAnalytics
-- ✓ SenaCrmApp simplificado (sem data propagation)
+- ✓ Removidos props mock de SenaCrmApp (todas as 4 módulos integrados)
+- ✓ RentalsModule: props → 4 hooks (leases, charges, inspections, maintenance)
+- ✓ DevelopmentsLotsModule: props → 3 hooks (developments, lots, proposals)
+- ✓ DashboardModule: props → 1 hook (dashboardAnalytics)
+- ✓ ReportsModule: props → 1 hook (reports)
+- ✓ SenaCrmApp simplificado (sem data propagation, hooks gerenciam estado)
 
 **Build & Type:**
 - ✓ Typecheck API: 0 erros
 - ✓ Typecheck Web: 0 erros
-- ✓ Build Web: 219.79 kB gzip (redução de 11.83 kB vs E11-C)
+- ✓ Build Web: 220.65 kB gzip (estável vs E11-D fase anterior)
 
 ### ⏳ PENDENTE PARA E11-E/HOMOLOGAÇÃO
 

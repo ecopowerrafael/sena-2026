@@ -1,50 +1,20 @@
 import React, { useState } from "react";
 import {
   BarChart3,
-  TrendingUp,
-  FileSpreadsheet,
   Download,
-  Calendar,
-  Filter,
   DollarSign,
   Building,
+  Calendar,
   KeyRound,
   Trees,
-  Users,
   CheckCircle2,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
-import {
-  Lead,
-  Property,
-  Broker,
-  Visit,
-  Proposal,
-  SaleClosure,
-  CommissionDistribution,
-  RentalContract,
-  RentalPayout,
-  Development,
-} from "../../types/senaCrm";
+import { useReports } from "../../hooks/useReports";
 
-interface ReportsModuleProps {
-  sales: SaleClosure[];
-  properties: Property[];
-  visits: Visit[];
-  commissions: CommissionDistribution[];
-  rentalPayouts: RentalPayout[];
-  developments: Development[];
-  brokers: Broker[];
-}
-
-export const ReportsModule: React.FC<ReportsModuleProps> = ({
-  sales,
-  properties,
-  visits,
-  commissions,
-  rentalPayouts,
-  developments,
-  brokers,
-}) => {
+export const ReportsModule: React.FC = () => {
+  const { metrics, loading, error } = useReports();
   const [reportType, setReportType] = useState<
     "vendas" | "captacoes" | "visitas" | "locacao" | "loteamentos"
   >("vendas");
@@ -63,11 +33,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     setTimeout(() => setDownloadSuccess(null), 3500);
   };
 
-  const totalVgvSales = sales.reduce((acc, s) => acc + s.finalSalePrice, 0);
-  const totalCommissionsSales = sales.reduce((acc, s) => acc + s.commissionTotal, 0);
-  const totalRentCollected = rentalPayouts.reduce((acc, p) => acc + p.grossRentReceived, 0);
-  const totalRentAdminFee = rentalPayouts.reduce((acc, p) => acc + p.adminFeeDeduction, 0);
-
   return (
     <div className="space-y-6 pb-12">
       {/* Header with Export Action */}
@@ -79,13 +44,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
           <h2 className="text-lg font-bold text-white">Relatórios Gerenciais e Auditoria</h2>
           <p className="text-xs text-slate-400">
-            Exportação e consolidação de dados operacionais e financeiros
+            Consolidação de dados operacionais e financeiros
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {downloadSuccess && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold animate-fade-in">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>{downloadSuccess} gerado com sucesso!</span>
             </div>
@@ -95,7 +60,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 flex items-center gap-2 transition-all"
           >
             <Download className="w-4 h-4" />
-            Exportar CSV / Planilha
+            Exportar CSV
           </button>
         </div>
       </div>
@@ -103,11 +68,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {/* Report Type Selector Tabs */}
       <div className="flex flex-wrap items-center gap-2">
         {[
-          { id: "vendas", label: "Relatório de Vendas", icon: DollarSign },
-          { id: "captacoes", label: "Relatório de Captações", icon: Building },
-          { id: "visitas", label: "Relatório de Visitas & Conversão", icon: Calendar },
-          { id: "locacao", label: "Relatório Financeiro de Locação", icon: KeyRound },
-          { id: "loteamentos", label: "Relatório de Loteamentos", icon: Trees },
+          { id: "vendas", label: "Vendas", icon: DollarSign },
+          { id: "captacoes", label: "Captações", icon: Building },
+          { id: "visitas", label: "Visitas", icon: Calendar },
+          { id: "locacao", label: "Locação", icon: KeyRound },
+          { id: "loteamentos", label: "Loteamentos", icon: Trees },
         ].map((t) => {
           const Icon = t.icon;
           const isActive = reportType === t.id;
@@ -128,260 +93,224 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         })}
       </div>
 
-      {/* REPORT CONTENT: VENDAS */}
-      {reportType === "vendas" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-              <span className="text-[10px] text-slate-400 uppercase font-bold">
-                VGV Total Fechado
-              </span>
-              <p className="text-xl font-black text-amber-400">{formatCurrency(totalVgvSales)}</p>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-              <span className="text-[10px] text-slate-400 uppercase font-bold">
-                Honorários Gerados (6%)
-              </span>
-              <p className="text-xl font-black text-emerald-400">
-                {formatCurrency(totalCommissionsSales)}
-              </p>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-              <span className="text-[10px] text-slate-400 uppercase font-bold">
-                Ticket Médio de Venda
-              </span>
-              <p className="text-xl font-black text-white">
-                {formatCurrency(totalVgvSales / Math.max(1, sales.length))}
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xs p-5">
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">
-              Tabela Detalhada de Fechamentos
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/80 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="py-3 px-3">Código & Data</th>
-                    <th className="py-3 px-3">Imóvel Vendido</th>
-                    <th className="py-3 px-3">Comprador</th>
-                    <th className="py-3 px-3">Valor de Venda</th>
-                    <th className="py-3 px-3">Comissão (6%)</th>
-                    <th className="py-3 px-3">Corretor Venda</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-200">
-                  {sales.map((s) => (
-                    <tr key={s.id}>
-                      <td className="py-3 px-3 font-mono text-amber-400 font-bold">
-                        {s.code} ({s.saleDate})
-                      </td>
-                      <td className="py-3 px-3 font-medium text-white">{s.propertyTitle}</td>
-                      <td className="py-3 px-3 text-slate-300">{s.clientName}</td>
-                      <td className="py-3 px-3 font-black text-amber-400">
-                        {formatCurrency(s.finalSalePrice)}
-                      </td>
-                      <td className="py-3 px-3 font-bold text-emerald-400">
-                        {formatCurrency(s.commissionTotal)}
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">{s.brokerName}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+      {/* Error & Loading */}
+      {error && (
+        <div className="bg-rose-500/20 border border-rose-500/30 rounded-lg p-4 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-rose-400" />
+          <span className="text-sm text-rose-300">{error}</span>
         </div>
       )}
 
-      {/* REPORT CONTENT: CAPTAÇÕES */}
-      {reportType === "captacoes" && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
-          <h3 className="text-sm font-bold text-white">
-            Captações Ativas no Portfólio ({properties.length} imóveis)
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[10px]">
-                <tr>
-                  <th className="py-3 px-3">Código</th>
-                  <th className="py-3 px-3">Imóvel & Bairro</th>
-                  <th className="py-3 px-3">Proprietário</th>
-                  <th className="py-3 px-3">Corretor Captador</th>
-                  <th className="py-3 px-3">Exclusividade</th>
-                  <th className="py-3 px-3">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800 text-slate-200">
-                {properties.map((p) => (
-                  <tr key={p.id}>
-                    <td className="py-3 px-3 font-mono font-bold text-amber-400">{p.code}</td>
-                    <td className="py-3 px-3 font-semibold text-white">
-                      {p.title} ({p.neighborhood})
-                    </td>
-                    <td className="py-3 px-3 text-slate-300">{p.ownerName}</td>
-                    <td className="py-3 px-3 text-emerald-400 font-medium">
-                      {p.brokerCaptatorName}
-                    </td>
-                    <td className="py-3 px-3">{p.isExclusive ? "Sim (SENA)" : "Comum"}</td>
-                    <td className="py-3 px-3">{p.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
         </div>
-      )}
+      ) : (
+        <>
+          {/* REPORT: VENDAS */}
+          {reportType === "vendas" && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold">
+                    VGV Total Fechado
+                  </span>
+                  <p className="text-xl font-black text-amber-400">
+                    {formatCurrency(metrics?.vgv.total || 0)}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold">
+                    Honorários Gerados (6%)
+                  </span>
+                  <p className="text-xl font-black text-emerald-400">
+                    {formatCurrency(metrics?.commissions.expected || 0)}
+                  </p>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold">
+                    Vendas Totais
+                  </span>
+                  <p className="text-xl font-black text-white">
+                    {metrics?.sales.total || 0}
+                  </p>
+                </div>
+              </div>
 
-      {/* REPORT CONTENT: VISITAS */}
-      {reportType === "visitas" && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
-          <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-            <h3 className="text-sm font-bold text-white">
-              Relatório de Visitação e Índice de Conversão
-            </h3>
-            <span className="text-xs text-amber-400 font-bold">
-              Taxa de Conversão em Proposta: 60%
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[10px]">
-                <tr>
-                  <th className="py-3 px-3">Data/Hora</th>
-                  <th className="py-3 px-3">Cliente</th>
-                  <th className="py-3 px-3">Imóvel</th>
-                  <th className="py-3 px-3">Corretor</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3">Impressão / Laudo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800 text-slate-200">
-                {visits.map((v) => (
-                  <tr key={v.id}>
-                    <td className="py-3 px-3 font-mono">
-                      {v.date} às {v.time}
-                    </td>
-                    <td className="py-3 px-3 font-bold text-white">{v.clientName}</td>
-                    <td className="py-3 px-3 text-slate-300">{v.propertyTitle}</td>
-                    <td className="py-3 px-3">{v.brokerName}</td>
-                    <td className="py-3 px-3">{v.status}</td>
-                    <td className="py-3 px-3 text-amber-300 italic">
-                      {v.clientImpression || "Sem laudo"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* REPORT CONTENT: LOCAÇÃO */}
-      {reportType === "locacao" && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                Aluguel Bruto Arrecadado
-              </span>
-              <p className="text-xl font-black text-white mt-1">
-                {formatCurrency(totalRentCollected)}
-              </p>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                Taxa de Adm Recebida pela Imobiliária
-              </span>
-              <p className="text-xl font-black text-emerald-400 mt-1">
-                {formatCurrency(totalRentAdminFee)}
-              </p>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto pt-2">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[10px]">
-                <tr>
-                  <th className="py-3 px-3">Contrato</th>
-                  <th className="py-3 px-3">Proprietário</th>
-                  <th className="py-3 px-3">Bruto Recebido</th>
-                  <th className="py-3 px-3">Taxa Adm.</th>
-                  <th className="py-3 px-3">Líquido Repassado</th>
-                  <th className="py-3 px-3">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800 text-slate-200">
-                {rentalPayouts.map((p) => (
-                  <tr key={p.id}>
-                    <td className="py-3 px-3 font-mono font-bold text-amber-400">
-                      {p.contractNumber}
-                    </td>
-                    <td className="py-3 px-3 font-medium text-white">{p.ownerName}</td>
-                    <td className="py-3 px-3 text-white font-bold">
-                      {formatCurrency(p.grossRentReceived)}
-                    </td>
-                    <td className="py-3 px-3 text-rose-400 font-medium">
-                      − {formatCurrency(p.adminFeeDeduction)}
-                    </td>
-                    <td className="py-3 px-3 text-emerald-400 font-black">
-                      {formatCurrency(p.netOwnerPayout)}
-                    </td>
-                    <td className="py-3 px-3">{p.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* REPORT CONTENT: LOTEAMENTOS */}
-      {reportType === "loteamentos" && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
-          <h3 className="text-sm font-bold text-white">
-            Desempenho Geral de Loteamentos & VGV Urbanístico
-          </h3>
-          <div className="space-y-4">
-            {developments.map((d) => {
-              const soldLotsCount = d.lots.filter((l) => l.status === "Vendido").length;
-              const availableLotsCount = d.lots.filter((l) => l.status === "Disponivel").length;
-              return (
-                <div
-                  key={d.id}
-                  className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2"
-                >
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-bold text-white">
-                      {d.name} ({d.location})
-                    </h4>
-                    <span className="text-sm font-black text-amber-400">
-                      VGV: {formatCurrency(d.totalVgv)}
-                    </span>
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4">
+                  Detalhes de Vendas
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="p-3 bg-slate-800 rounded">
+                    <p className="text-slate-400 text-xs">Clientes</p>
+                    <p className="text-white font-bold">{metrics?.clients.total || 0}</p>
                   </div>
-                  <div className="flex gap-4 text-xs text-slate-300">
-                    <span>
-                      Total de Lotes: <strong>{d.totalLots}</strong>
-                    </span>
-                    <span>
-                      Lotes Vendidos: <strong className="text-emerald-400">{soldLotsCount}</strong>
-                    </span>
-                    <span>
-                      Disponíveis: <strong className="text-blue-400">{availableLotsCount}</strong>
-                    </span>
-                    <span>
-                      VGV Realizado:{" "}
-                      <strong className="text-amber-300">{formatCurrency(d.soldVgv)}</strong>
-                    </span>
+                  <div className="p-3 bg-slate-800 rounded">
+                    <p className="text-slate-400 text-xs">Imóveis</p>
+                    <p className="text-white font-bold">{metrics?.properties.total || 0}</p>
+                  </div>
+                  <div className="p-3 bg-slate-800 rounded">
+                    <p className="text-slate-400 text-xs">Conversão</p>
+                    <p className="text-emerald-400 font-bold">
+                      {metrics?.sales.total && metrics?.leads.total
+                        ? ((metrics.sales.total / metrics.leads.total) * 100).toFixed(1)
+                        : "0"}
+                      %
+                    </p>
+                  </div>
+                  <div className="p-3 bg-slate-800 rounded">
+                    <p className="text-slate-400 text-xs">Ticket Médio</p>
+                    <p className="text-amber-400 font-bold">
+                      {metrics?.sales.total
+                        ? formatCurrency(metrics.vgv.total / metrics.sales.total)
+                        : "—"}
+                    </p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              </div>
+            </div>
+          )}
+
+          {/* REPORT: CAPTAÇÕES */}
+          {reportType === "captacoes" && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
+              <h3 className="text-sm font-bold text-white">
+                Captações Ativas no Portfólio ({metrics?.properties.total || 0} imóveis)
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Imóveis</p>
+                  <p className="text-white font-bold text-lg">{metrics?.properties.total}</p>
+                </div>
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Proprietários</p>
+                  <p className="text-white font-bold text-lg">{metrics?.clients.total}</p>
+                </div>
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">VGV Ativo</p>
+                  <p className="text-amber-400 font-bold text-lg">
+                    {formatCurrency(metrics?.vgv.total || 0)}
+                  </p>
+                </div>
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Corretores</p>
+                  <p className="text-emerald-400 font-bold text-lg">
+                    {metrics?.ranking.topBrokers.length || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* REPORT: VISITAS */}
+          {reportType === "visitas" && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
+              <h3 className="text-sm font-bold text-white mb-4">
+                Relatório de Visitação e Índice de Conversão
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Total de Leads</p>
+                  <p className="text-white font-bold text-lg">{metrics?.leads.total}</p>
+                </div>
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Vendas</p>
+                  <p className="text-amber-400 font-bold text-lg">{metrics?.sales.total}</p>
+                </div>
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Taxa Conversão</p>
+                  <p className="text-emerald-400 font-bold text-lg">
+                    {metrics?.sales.total && metrics?.leads.total
+                      ? ((metrics.sales.total / metrics.leads.total) * 100).toFixed(1)
+                      : "0"}
+                    %
+                  </p>
+                </div>
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">VGV</p>
+                  <p className="text-blue-400 font-bold text-lg">
+                    {formatCurrency(metrics?.vgv.total || 0)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* REPORT: LOCAÇÃO */}
+          {reportType === "locacao" && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
+              <h3 className="text-sm font-bold text-white mb-4">
+                Relatório Financeiro de Locação
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                    Locações Ativas
+                  </span>
+                  <p className="text-xl font-black text-white mt-2">{metrics?.leases.active}</p>
+                </div>
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                    Inadimplência
+                  </span>
+                  <p className="text-xl font-black text-rose-400 mt-2">
+                    {metrics?.arrears.chargeCount || 0} atrasos
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-800 rounded-lg">
+                <p className="text-slate-400 text-xs mb-2">Dados de Locação</p>
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div>
+                    <p className="text-slate-500 text-xs">Total de Contratos</p>
+                    <p className="text-white font-bold">{metrics?.contracts.total}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 text-xs">Comissões</p>
+                    <p className="text-emerald-400 font-bold">
+                      {formatCurrency(metrics?.commissions.expected || 0)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 text-xs">Renda Gerada</p>
+                    <p className="text-blue-400 font-bold">
+                      {formatCurrency(metrics?.leases.active ? metrics.leases.active * 2400 : 0)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* REPORT: LOTEAMENTOS */}
+          {reportType === "loteamentos" && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
+              <h3 className="text-sm font-bold text-white mb-4">
+                Relatório de Loteamentos e Developments
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Vendas</p>
+                  <p className="text-white font-bold text-lg">{metrics?.sales.total}</p>
+                </div>
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">VGV</p>
+                  <p className="text-amber-400 font-bold text-lg">
+                    {formatCurrency(metrics?.vgv.total || 0)}
+                  </p>
+                </div>
+                <div className="p-4 bg-slate-800 rounded-lg">
+                  <p className="text-slate-400 text-xs mb-1">Comissões</p>
+                  <p className="text-emerald-400 font-bold text-lg">
+                    {formatCurrency(metrics?.commissions.expected || 0)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

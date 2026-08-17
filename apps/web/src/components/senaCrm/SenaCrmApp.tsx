@@ -6,6 +6,10 @@ import { useLeads } from "../../hooks/useLeads";
 import { useBrokers } from "../../hooks/useBrokers";
 import { useProperties } from "../../hooks/useProperties";
 import { useClients } from "../../hooks/useClients";
+import { useVisits } from "../../hooks/useVisits";
+import { useProposals } from "../../hooks/useProposals";
+import { useSales } from "../../hooks/useSales";
+import { useCommissions } from "../../hooks/useCommissions";
 import { useLeadOrigins } from "../../hooks/useLeadOrigins";
 import { useLeadCampaigns } from "../../hooks/useLeadCampaigns";
 import { SenaSidebar, SenaTab } from "./SenaSidebar";
@@ -24,10 +28,6 @@ import { ReportsModule } from "./ReportsModule";
 import { PropertyDetailModal } from "./PropertyDetailModal";
 
 import {
-  INITIAL_VISITS,
-  INITIAL_PROPOSALS,
-  INITIAL_SALES,
-  INITIAL_COMMISSIONS,
   INITIAL_RENTAL_CONTRACTS,
   INITIAL_RENTAL_PAYOUTS,
   INITIAL_INSPECTIONS,
@@ -105,15 +105,41 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
     error: clientsError,
     addClient: apiAddClient,
   } = useClients();
+  const {
+    visits: apiVisits,
+    isLoading: visitsLoading,
+    error: visitsError,
+    createVisit: apiCreateVisit,
+    updateVisit: apiUpdateVisit,
+  } = useVisits();
+  const {
+    proposals: apiProposals,
+    isLoading: proposalsLoading,
+    error: proposalsError,
+    createProposal: apiCreateProposal,
+    updateProposal: apiUpdateProposal,
+    approveProposal: apiApproveProposal,
+  } = useProposals();
+  const {
+    sales: apiSales,
+    isLoading: salesLoading,
+    error: salesError,
+    updateSale: apiUpdateSale,
+  } = useSales();
+  const {
+    commissions: apiCommissions,
+    isLoading: commissionsLoading,
+    error: commissionsError,
+  } = useCommissions();
 
   // Core State
   const [leads, setLeads] = useState<Lead[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
-  const [visits, setVisits] = useState<Visit[]>(INITIAL_VISITS);
-  const [proposals, setProposals] = useState<Proposal[]>(INITIAL_PROPOSALS);
-  const [sales, setSales] = useState<SaleClosure[]>(INITIAL_SALES);
-  const [commissions, setCommissions] = useState<CommissionDistribution[]>(INITIAL_COMMISSIONS);
+  const [visits, setVisits] = useState<Visit[]>([]);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [sales, setSales] = useState<SaleClosure[]>([]);
+  const [commissions, setCommissions] = useState<CommissionDistribution[]>([]);
   const [rentalContracts, setRentalContracts] =
     useState<RentalContract[]>(INITIAL_RENTAL_CONTRACTS);
   const [rentalPayouts, setRentalPayouts] = useState<RentalPayout[]>(INITIAL_RENTAL_PAYOUTS);
@@ -136,6 +162,22 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
   useEffect(() => {
     setProperties(apiProperties);
   }, [apiProperties]);
+
+  useEffect(() => {
+    setVisits(apiVisits);
+  }, [apiVisits]);
+
+  useEffect(() => {
+    setProposals(apiProposals);
+  }, [apiProposals]);
+
+  useEffect(() => {
+    setSales(apiSales);
+  }, [apiSales]);
+
+  useEffect(() => {
+    setCommissions(apiCommissions);
+  }, [apiCommissions]);
 
   // Handlers: Leads
   const handleAddLead = async (newLead: Partial<Lead>) => {

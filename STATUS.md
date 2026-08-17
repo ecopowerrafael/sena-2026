@@ -63,7 +63,22 @@
 - ✓ MySQL: Conectado e pronto
 - ✓ Seed: Tenant + admin + origens criadas
 
-**Status**: ✅ Implementação completa. ✅ Typecheck e build validados. ⏳ Aguardando teste funcional com credenciais válidas: criar lead (Google Ads) → F5 → mover status → F5 → LOST+reason → F5 + broker criação → F5.
+**Status**: ✅ CONCLUÍDO E VALIDADO
+
+**Validação funcional completa**:
+- ✓ Login: OK (SEED_ADMIN_EMAIL + senha)
+- ✓ Lead POST: 2xx (async modal handling)
+- ✓ Origem Google Ads POST: OK (originId resolução, originName "Google Ads" retornado)
+- ✓ Origem Google Ads F5: OK (GET /leads persiste originName "Google Ads")
+- ✓ Lead F5: OK (Kanban display, persistência, estado recuperado)
+- ✓ NEW→CONTACT: OK (status transition)
+- ✓ CONTACT F5: OK (status persiste)
+- ✓ CONTACT→LOST+reason: OK (lostReason salvo e persistido)
+- ✓ Role OWNER POST: OK (client.roles = ["OWNER"] retornado)
+- ✓ Role OWNER F5: OK (client.roles persiste após reload)
+- ✓ Broker POST: 2xx (async modal, password validação, NÃO retorna password)
+- ✓ Broker F5: OK (GET /brokers persiste)
+- ✓ Senha fora dos logs: OK (resposta não contém password/passwordHash)
 
 ---
 

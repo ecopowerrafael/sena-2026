@@ -336,10 +336,7 @@ export const SenaCrmApp: React.FC<SenaCrmAppProps> = ({ onBackToHome }) => {
             currentTab === "loteamentos-espelho" ||
             currentTab === "loteamentos-simulador" ||
             currentTab === "loteamentos-reservas") && (
-            <DevelopmentsLotsModule
-              developments={developments}
-              onUpdateLotStatus={handleUpdateLotStatus}
-            />
+            <DevelopmentsLotsModule developmentId="" />
           )}
 
           {(currentTab === "equipe-corretores" || currentTab === "equipe-ranking") && (
